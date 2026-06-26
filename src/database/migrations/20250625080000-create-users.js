@@ -1,4 +1,4 @@
-export default {
+module.exports = {
   up: async (queryInterface, Sequelize) => {
     await queryInterface.createTable('users', {
       id: {
@@ -108,3 +108,4 @@ export default {
     await queryInterface.dropTable('users');
   },
 };
+

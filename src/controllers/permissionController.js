@@ -1,4 +1,5 @@
 import { Permission, UserPermission, User } from '../database/models';
+import sequelize from '../database/config/sequelize';
 
 export const getAllPermissions = async (req, res) => {
   try {
