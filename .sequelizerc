@@ -1,0 +1,11 @@
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+module.exports = {
+  config: path.resolve('./src/database/config', 'db.config.js'),
+  'models-path': path.resolve('./src/database/models'),
+  'seeders-path': path.resolve('./src/database/seeders'),
+  'migrations-path': path.resolve('./src/database/migrations'),
+};
