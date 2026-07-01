@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios from "axios";
 
 const KEYCLOAK_URL = process.env.KEYCLOAK_URL;
 const REALM = process.env.KEYCLOAK_REALM;
@@ -16,13 +16,13 @@ async function getAdminToken() {
   const form = new URLSearchParams({
     client_id: CLIENT_ID,
     client_secret: CLIENT_SECRET,
-    grant_type: 'client_credentials',
+    grant_type: "client_credentials",
   });
 
   const { data } = await axios.post(
     `${KEYCLOAK_URL}/realms/${REALM}/protocol/openid-connect/token`,
     form.toString(),
-    { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
+    { headers: { "Content-Type": "application/x-www-form-urlencoded" } },
   );
 
   adminTokenCache = data.access_token;
@@ -36,7 +36,7 @@ function adminApi(token) {
     baseURL: `${KEYCLOAK_URL}/admin/realms/${REALM}`,
     headers: {
       Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
   });
 }
@@ -45,19 +45,23 @@ export async function createKeycloakUser({ name, email, password }) {
   const token = await getAdminToken();
   const api = adminApi(token);
 
-  const firstName = name?.split(' ')[0] || '';
-  const lastName = name?.split(' ').slice(1).join(' ') || '';
+  const firstName = name?.split(" ")[0] || "";
+  const lastName = name?.split(" ").slice(1).join(" ") || "";
 
-  await api.post('/users', {
-    username: email, email, firstName, lastName,
-    enabled: true, emailVerified: true,
-    credentials: [{ type: 'password', value: password, temporary: false }],
+  await api.post("/users", {
+    username: email,
+    email,
+    firstName,
+    lastName,
+    enabled: true,
+
+    credentials: [{ type: "password", value: password, temporary: false }],
   });
 
   const searchRes = await api.get(`/users?email=${encodeURIComponent(email)}`);
   const keycloakUser = searchRes.data?.[0];
   if (!keycloakUser?.id) {
-    throw new Error('Keycloak user created but ID not found');
+    throw new Error("Keycloak user created but ID not found");
   }
 
   return keycloakUser.id;
@@ -67,7 +71,7 @@ export async function assignRealmRole(keycloakUserId, roleName) {
   const token = await getAdminToken();
   const api = adminApi(token);
 
-  const rolesRes = await api.get('/roles');
+  const rolesRes = await api.get("/roles");
   const role = rolesRes.data.find(
     (r) => r.name?.toLowerCase() === roleName?.toLowerCase(),
   );
