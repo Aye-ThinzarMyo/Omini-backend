@@ -54,7 +54,6 @@ export async function createKeycloakUser({ name, email, password }) {
     firstName,
     lastName,
     enabled: true,
-
     credentials: [{ type: "password", value: password, temporary: false }],
   });
 

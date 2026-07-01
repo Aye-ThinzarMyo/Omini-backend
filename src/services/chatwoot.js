@@ -1,5 +1,4 @@
 import axios from "axios";
-import axios from "axios";
 
 const BASE_URL = process.env.CHATWOOT_BASE_URL;
 const PLATFORM_TOKEN = process.env.CHATWOOT_PLATFORM_TOKEN;

@@ -11,7 +11,7 @@ import {
 export const getAllUsers = async (req, res) => {
   try {
     const users = await User.findAll({
-      attributes: { exclude: ["chatwoot_api_key_encrypted"] },
+      attributes: { exclude: ["chatwoot_api_key_encrypted", "password"] },
       order: [["created_at", "DESC"]],
     });
     res.json({ users });
@@ -29,11 +29,11 @@ export const getUserById = async (req, res) => {
 
     const user = numericId
       ? await User.findByPk(numericId, {
-          attributes: { exclude: ["chatwoot_api_key_encrypted"] },
+        attributes: { exclude: ["chatwoot_api_key_encrypted", "password"] },
         })
       : await User.findOne({
           where: { email: id },
-          attributes: { exclude: ["chatwoot_api_key_encrypted"] },
+          attributes: { exclude: ["chatwoot_api_key_encrypted", "password"] },
         });
 
     if (!user) return res.status(404).json({ error: "User not found" });
@@ -93,6 +93,7 @@ export const createUser = async (req, res) => {
 
     const { chatwootId, apiKey } = chatwootResult;
     const encryptedApiKey = encrypt(apiKey);
+    const encryptedPassword = encrypt(password);
 
     let keycloakId;
     try {
@@ -118,6 +119,7 @@ export const createUser = async (req, res) => {
         chatwoot_id: chatwootId,
         chatwoot_api_key_encrypted: encryptedApiKey,
         keycloak_id: keycloakId,
+        password: encryptedPassword,
       },
       { transaction: t },
     );
@@ -139,6 +141,7 @@ export const createUser = async (req, res) => {
 
     const userData = user.toJSON();
     delete userData.chatwoot_api_key_encrypted;
+    delete userData.password;
 
     res.status(201).json({
       user: userData,
