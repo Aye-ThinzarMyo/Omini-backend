@@ -1,4 +1,4 @@
-export default {
+module.exports = {
   up: async (queryInterface) => {
     const perms = [
       { key: 'viewTickets', label: 'View Tickets', description: 'Can view all tickets in assigned queues', category: 'tickets' },
@@ -26,3 +26,4 @@ export default {
     await queryInterface.bulkDelete('permissions', null, {});
   },
 };
+

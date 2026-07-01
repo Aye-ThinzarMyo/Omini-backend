@@ -1,4 +1,5 @@
 import axios from "axios";
+import axios from "axios";
 
 const BASE_URL = process.env.CHATWOOT_BASE_URL;
 const PLATFORM_TOKEN = process.env.CHATWOOT_PLATFORM_TOKEN;
@@ -6,6 +7,7 @@ const PLATFORM_TOKEN = process.env.CHATWOOT_PLATFORM_TOKEN;
 const chatwootApi = axios.create({
   baseURL: `${BASE_URL}/platform/api/v1`,
   headers: {
+    "Content-Type": "application/json",
     "Content-Type": "application/json",
     api_access_token: PLATFORM_TOKEN,
   },
@@ -18,12 +20,13 @@ export async function createChatwootUser({ name, email, password }) {
     password,
     custom_attributes: {},
   });
-
+  console.log("data:::", data);
   return { chatwootId: data.id, apiKey: data.access_token };
 }
 
 export async function createChatwootAccount(chatwootUserId, accountName) {
   const { data } = await chatwootApi.post(`/users/${chatwootUserId}/accounts`, {
+    name: accountName || "Default Account",
     name: accountName || "Default Account",
   });
 
