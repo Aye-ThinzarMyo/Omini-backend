@@ -7,7 +7,6 @@ const chatwootApi = axios.create({
   baseURL: `${BASE_URL}/platform/api/v1`,
   headers: {
     "Content-Type": "application/json",
-    "Content-Type": "application/json",
     api_access_token: PLATFORM_TOKEN,
   },
 });
@@ -19,20 +18,28 @@ export async function createChatwootUser({ name, email, password }) {
     password,
     custom_attributes: {},
   });
-  console.log("data:::", data);
   return { chatwootId: data.id, apiKey: data.access_token };
 }
 
-export async function createChatwootAccount(chatwootUserId, accountName) {
-  const { data } = await chatwootApi.post(`/users/${chatwootUserId}/accounts`, {
-    name: accountName || "Default Account",
-    name: accountName || "Default Account",
-  });
+// export async function createChatwootAccount(chatwootUserId, accountName) {
+//   const { data } = await chatwootApi.post(`/users/${chatwootUserId}/accounts`, {
+//     name: accountName || "Default Account",
+//     name: accountName || "Default Account",
+//   });
 
-  return { accountId: data.id };
-}
+//   return { accountId: data.id };
+// }
 
-export async function getChatwootUser(chatwootUserId) {
-  const { data } = await chatwootApi.get(`/users/${chatwootUserId}`);
+// export async function getChatwootUser(chatwootUserId) {
+//   const { data } = await chatwootApi.get(`/users/${chatwootUserId}`);
+//   return data;
+// }
+
+export async function getAccountUsers(accountId) {
+  console.log("account id:::", accountId);
+  const { data } = await chatwootApi.get(
+    `/accounts/${accountId}/account_users`,
+  );
+  console.log("dd::", data);
   return data;
 }

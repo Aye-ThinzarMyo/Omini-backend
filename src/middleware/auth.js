@@ -45,20 +45,16 @@ export async function authMiddleware(req, res, next) {
 
     // 1. Get auth header
     const authHeader = req.headers.authorization;
-    console.log("1. authHeader:", authHeader);
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      console.log("2. Missing Bearer token");
       return res.status(401).json({ error: "No token provided" });
     }
 
     // 2. Extract token
     const token = authHeader.split(" ")[1];
-    console.log("3. token extracted");
 
     // 3. Decode token header (NO VERIFY)
     const decodedHeader = jwt.decode(token, { complete: true });
-    console.log("4. token header:", decodedHeader?.header);
 
     if (!decodedHeader) {
       return res.status(401).json({ error: "Invalid token format" });
@@ -68,32 +64,25 @@ export async function authMiddleware(req, res, next) {
 
     // 4. Get JWKS
     const keys = await getRealmKeys();
-    console.log("5. keys loaded:", keys.length);
 
     // 5. Find matching key
     const key = keys.find((k) => k.kid === kid);
 
     if (!key) {
-      console.log("6. No matching key found for kid:", kid);
       return res
         .status(401)
         .json({ error: "Invalid signing key (kid mismatch)" });
     }
 
-    console.log("6. Matching key found");
-
     // 6. Convert cert to PEM
     const publicKey = certToPEM(key.x5c[0]);
 
     // 7. Verify token
-    console.log("7. verifying token...");
 
     const decoded = jwt.verify(token, publicKey, {
       algorithms: ["RS256"],
       issuer: `https://auth.agbisp.net/realms/omnichannel`,
     });
-
-    console.log("8. token verified");
 
     // 8. Attach user
     req.user = {
@@ -104,7 +93,6 @@ export async function authMiddleware(req, res, next) {
       roles: decoded.realm_access?.roles || [],
     };
 
-    console.log("9. user attached:", req.user);
     console.log("=== AUTH SUCCESS ===");
 
     next();
