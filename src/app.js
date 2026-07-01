@@ -2,7 +2,6 @@ import express from 'express';
 import cors from 'cors';
 import { authMiddleware } from './middleware/auth';
 import usersRouter from './routes/users';
-import permissionsRouter from './routes/permissions';
 import accountsRouter from './routes/accounts';
 
 const app = express();
@@ -20,7 +19,6 @@ app.get('/api/health', (req, res) => {
 });
 
 app.use('/api/users', authMiddleware, usersRouter);
-app.use('/api/permissions', authMiddleware, permissionsRouter);
 app.use('/api/accounts', authMiddleware, accountsRouter);
 
 app.use((err, req, res, next) => {

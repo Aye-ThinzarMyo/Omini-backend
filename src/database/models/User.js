@@ -32,15 +32,15 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING(20),
     defaultValue: 'Active',
   },
-  chatwoot_id: {
+  chat_id: {
     type: DataTypes.INTEGER,
     allowNull: true,
   },
-  chatwoot_api_key_encrypted: {
+  chat_key: {
     type: DataTypes.TEXT,
     allowNull: true,
   },
-  keycloak_id: {
+  login_id: {
     type: DataTypes.STRING(255),
     allowNull: true,
   },

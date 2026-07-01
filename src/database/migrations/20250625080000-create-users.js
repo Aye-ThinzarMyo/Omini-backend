@@ -31,15 +31,15 @@ module.exports = {
         type: Sequelize.STRING(20),
         defaultValue: 'Active',
       },
-      chatwoot_id: {
+      chat_id: {
         type: Sequelize.INTEGER,
         allowNull: true,
       },
-      chatwoot_api_key_encrypted: {
+      chat_key: {
         type: Sequelize.TEXT,
         allowNull: true,
       },
-      keycloak_id: {
+      login_id: {
         type: Sequelize.STRING(255),
         allowNull: true,
       },

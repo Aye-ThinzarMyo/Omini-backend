@@ -1,4 +1,4 @@
-import { User, UserPermission, Permission } from "../database/models";
+import { User } from "../database/models";
 import sequelize from "../database/config/sequelize";
 import { encrypt } from "../utils/encryption";
 import { createChatwootUser } from "../services/chatwoot";
@@ -11,7 +11,7 @@ import {
 export const getAllUsers = async (req, res) => {
   try {
     const users = await User.findAll({
-      attributes: { exclude: ["chatwoot_api_key_encrypted", "password"] },
+      attributes: { exclude: ["chat_key", "password"] },
       order: [["created_at", "DESC"]],
     });
     res.json({ users });
@@ -29,29 +29,16 @@ export const getUserById = async (req, res) => {
 
     const user = numericId
       ? await User.findByPk(numericId, {
-        attributes: { exclude: ["chatwoot_api_key_encrypted", "password"] },
+        attributes: { exclude: ["chat_key", "password"] },
         })
       : await User.findOne({
           where: { email: id },
-          attributes: { exclude: ["chatwoot_api_key_encrypted", "password"] },
+          attributes: { exclude: ["chat_key", "password"] },
         });
 
     if (!user) return res.status(404).json({ error: "User not found" });
 
-    const userPerms = await UserPermission.findAll({
-      where: { user_id: user.id },
-    });
-    const allPerms = await Permission.findAll();
-
-    const permissions = {};
-    allPerms.forEach((p) => {
-      permissions[p.key] = false;
-    });
-    userPerms.forEach((up) => {
-      permissions[up.permission_key] = up.enabled;
-    });
-
-    res.json({ user, permissions });
+    res.json({ user });
   } catch (err) {
     res
       .status(500)
@@ -60,7 +47,7 @@ export const getUserById = async (req, res) => {
 };
 
 export const createUser = async (req, res) => {
-  const { name, email, phone, department, role, password, permissions } =
+  const { name, email, phone, department, role, password } =
     req.body;
 
   if (!name || !email || !password) {
@@ -116,31 +103,18 @@ export const createUser = async (req, res) => {
         phone: phone || null,
         department: department || null,
         role: role || "Agent",
-        chatwoot_id: chatwootId,
-        chatwoot_api_key_encrypted: encryptedApiKey,
-        keycloak_id: keycloakId,
+        chat_id: chatwootId,
+        chat_key: encryptedApiKey,
+        login_id: keycloakId,
         password: encryptedPassword,
       },
       { transaction: t },
     );
 
-    if (permissions && typeof permissions === "object") {
-      for (const [permKey, enabled] of Object.entries(permissions)) {
-        await UserPermission.upsert(
-          {
-            user_id: user.id,
-            permission_key: permKey,
-            enabled: enabled === true,
-          },
-          { transaction: t },
-        );
-      }
-    }
-
     await t.commit();
 
     const userData = user.toJSON();
-    delete userData.chatwoot_api_key_encrypted;
+    delete userData.chat_key;
     delete userData.password;
 
     res.status(201).json({
@@ -187,15 +161,14 @@ export const deleteUser = async (req, res) => {
     const user = await User.findByPk(id);
     if (!user) return res.status(404).json({ error: "User not found" });
 
-    if (user.keycloak_id) {
+    if (user.login_id) {
       try {
-        await deleteKeycloakUser(user.keycloak_id);
+        await deleteKeycloakUser(user.login_id);
       } catch (err) {
         console.warn("Failed to delete Keycloak user:", err.message);
       }
     }
 
-    await UserPermission.destroy({ where: { user_id: id } });
     await user.destroy();
 
     res.json({ message: "User deleted from database and Keycloak" });
@@ -206,80 +179,19 @@ export const deleteUser = async (req, res) => {
   }
 };
 
-export const getUserPermissions = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const user = await User.findByPk(id);
-    if (!user) return res.status(404).json({ error: "User not found" });
 
-    const userPerms = await UserPermission.findAll({ where: { user_id: id } });
-    const allPerms = await Permission.findAll();
-
-    const permissions = {};
-    allPerms.forEach((p) => {
-      permissions[p.key] = false;
-    });
-    userPerms.forEach((up) => {
-      permissions[up.permission_key] = up.enabled;
-    });
-
-    res.json({ permissions });
-  } catch (err) {
-    res
-      .status(500)
-      .json({ error: "Failed to fetch permissions", detail: err.message });
-  }
-};
-
-export const updateUserPermissions = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { permissions } = req.body;
-
-    const user = await User.findByPk(id);
-    if (!user) return res.status(404).json({ error: "User not found" });
-
-    const t = await sequelize.transaction();
-    try {
-      await UserPermission.destroy({ where: { user_id: id }, transaction: t });
-
-      if (permissions && typeof permissions === "object") {
-        for (const [key, value] of Object.entries(permissions)) {
-          await UserPermission.create(
-            {
-              user_id: id,
-              permission_key: key,
-              enabled: value === true,
-            },
-            { transaction: t },
-          );
-        }
-      }
-
-      await t.commit();
-      res.json({ message: "Permissions updated" });
-    } catch (err) {
-      await t.rollback();
-      throw err;
-    }
-  } catch (err) {
-    res
-      .status(500)
-      .json({ error: "Failed to update permissions", detail: err.message });
-  }
-};
 
 export const getUserApiKey = async (req, res) => {
   try {
     const { id } = req.params;
     const user = await User.findByPk(id);
     if (!user) return res.status(404).json({ error: "User not found" });
-    if (!user.chatwoot_api_key_encrypted) {
+    if (!user.chat_key) {
       return res.status(404).json({ error: "No API key found for this user" });
     }
 
     const { decrypt } = await import("../utils/encryption");
-    const apiKey = decrypt(user.chatwoot_api_key_encrypted);
+    const apiKey = decrypt(user.chat_key);
     res.json({ apiKey });
   } catch (err) {
     res
