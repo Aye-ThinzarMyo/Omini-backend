@@ -1,7 +1,10 @@
 import { User } from "../database/models";
 import sequelize from "../database/config/sequelize";
 import { encrypt } from "../utils/encryption";
-import { createChatwootUser } from "../services/chatwoot";
+import {
+  createChatwootAccountUser,
+  createChatwootUser,
+} from "../services/chatwoot";
 import {
   createKeycloakUser,
   assignRealmRole,
@@ -9,7 +12,8 @@ import {
 } from "../services/keycloak";
 
 export const createUser = async (req, res) => {
-  const { full_name, email, phone, department, role, password } = req.body;
+  const { full_name, email, phone, department, role, password, accountId } =
+    req.body;
 
   if (!full_name || !email || !password) {
     return res
@@ -29,6 +33,7 @@ export const createUser = async (req, res) => {
     }
 
     let chatwootResult;
+    let chatwootRole;
     try {
       chatwootResult = await createChatwootUser({
         name: full_name,
@@ -44,19 +49,34 @@ export const createUser = async (req, res) => {
     }
 
     const { chatwootId, apiKey } = chatwootResult;
+    try {
+      chatwootRole = await createChatwootAccountUser({
+        user_id: chatwootId,
+        role: role || "agent",
+        accountId,
+      });
+    } catch (err) {
+      await t.rollback();
+      return res.status(502).json({
+        error: "Failed to create user in Chatwoot",
+        detail: err.response?.data || err.message,
+      });
+    }
     const encryptedApiKey = encrypt(apiKey);
     const encryptedPassword = encrypt(password);
-
+    const { resultRole } = chatwootRole;
     let keycloakId;
+
     try {
       keycloakId = await createKeycloakUser({
         name: full_name,
         email,
         password,
-        encryptedApiKey,
+        department,
+        role: resultRole,
       });
-      if (role) {
-        await assignRealmRole(keycloakId, role);
+      if (resultRole) {
+        await assignRealmRole(keycloakId, resultRole);
       }
     } catch (err) {
       await t.rollback();
@@ -73,7 +93,7 @@ export const createUser = async (req, res) => {
         email,
         phone: phone || null,
         department: department || null,
-        role: role || "Agent",
+        role: resultRole || "Agent",
         chat_admin_user_id: chatwootId,
         encrypted_chat_secret: encryptedApiKey,
         password: encryptedPassword,
