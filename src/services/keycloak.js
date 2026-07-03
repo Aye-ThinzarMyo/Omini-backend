@@ -59,10 +59,9 @@ export async function createKeycloakUser({
     firstName,
     lastName,
     enabled: true,
-    attribute: {
-      encryptedApiKey: encryptedApiKey,
+    attributes: {
+      encryptedApiKey: [encryptedApiKey],
     },
-    credentials: [{ type: "password", value: password, temporary: false }],
   });
 
   const searchRes = await api.get(`/users?email=${encodeURIComponent(email)}`);
@@ -70,6 +69,12 @@ export async function createKeycloakUser({
   if (!keycloakUser?.id) {
     throw new Error("Keycloak user created but ID not found");
   }
+
+  await api.put(`/users/${keycloakUser.id}/reset-password`, {
+    type: "password",
+    value: password,
+    temporary: false,
+  });
 
   return keycloakUser.id;
 }
