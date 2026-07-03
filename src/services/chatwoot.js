@@ -3,16 +3,18 @@ import axios from "axios";
 const BASE_URL = process.env.CHATWOOT_BASE_URL;
 const PLATFORM_TOKEN = process.env.CHATWOOT_PLATFORM_TOKEN;
 
-const chatwootApi = axios.create({
-  baseURL: `${BASE_URL}/platform/api/v1`,
-  headers: {
-    "Content-Type": "application/json",
-    api_access_token: PLATFORM_TOKEN,
-  },
-});
+function chatwootApi(token) {
+  return axios.create({
+    baseURL: `${BASE_URL}/platform/api/v1`,
+    headers: {
+      "Content-Type": "application/json",
+      api_access_token: token,
+    },
+  });
+}
 
 export async function createChatwootUser({ name, email, password }) {
-  const { data } = await chatwootApi.post("/users", {
+  const { data } = await chatwootApi(PLATFORM_TOKEN).post("/users", {
     name,
     email,
     password,
@@ -21,25 +23,13 @@ export async function createChatwootUser({ name, email, password }) {
   return { chatwootId: data.id, apiKey: data.access_token };
 }
 
-// export async function createChatwootAccount(chatwootUserId, accountName) {
-//   const { data } = await chatwootApi.post(`/users/${chatwootUserId}/accounts`, {
-//     name: accountName || "Default Account",
-//     name: accountName || "Default Account",
-//   });
-
-//   return { accountId: data.id };
-// }
-
-// export async function getChatwootUser(chatwootUserId) {
-//   const { data } = await chatwootApi.get(`/users/${chatwootUserId}`);
-//   return data;
-// }
-
-export async function getAccountUsers(accountId) {
+export async function getInboxes(accountId, token) {
   console.log("account id:::", accountId);
-  const { data } = await chatwootApi.get(
-    `/accounts/${accountId}/account_users`,
+  console.log("token:::", token);
+
+  const { data } = await chatwootApi(token).get(
+    `/accounts/${accountId}/inboxes`,
   );
-  console.log("dd::", data);
+  console.log("data:::", data);
   return data;
 }

@@ -11,17 +11,12 @@ let cacheExpiry = 0;
 // 1. Get Keycloak public keys (JWKS)
 async function getRealmKeys() {
   if (jwksCache && Date.now() < cacheExpiry) {
-    console.log("1. Using cached JWKS");
     return jwksCache;
   }
-
-  console.log("2. Fetching JWKS from Keycloak...");
 
   const { data } = await axios.get(
     `https://auth.agbisp.net/realms/omnichannel/protocol/openid-connect/certs`,
   );
-
-  console.log("3. JWKS received");
 
   jwksCache = data.keys;
   cacheExpiry = Date.now() + 60 * 60 * 1000; // 1 hour

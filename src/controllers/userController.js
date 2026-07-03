@@ -53,6 +53,7 @@ export const createUser = async (req, res) => {
         name: full_name,
         email,
         password,
+        encryptedApiKey,
       });
       if (role) {
         await assignRealmRole(keycloakId, role);

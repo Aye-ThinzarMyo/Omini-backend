@@ -41,7 +41,12 @@ function adminApi(token) {
   });
 }
 
-export async function createKeycloakUser({ name, email, password }) {
+export async function createKeycloakUser({
+  name,
+  email,
+  password,
+  encryptedApiKey,
+}) {
   const token = await getAdminToken();
   const api = adminApi(token);
 
@@ -54,6 +59,9 @@ export async function createKeycloakUser({ name, email, password }) {
     firstName,
     lastName,
     enabled: true,
+    attribute: {
+      encryptedApiKey: encryptedApiKey,
+    },
     credentials: [{ type: "password", value: password, temporary: false }],
   });
 

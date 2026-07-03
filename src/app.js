@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import { authMiddleware } from "./middleware/auth";
 import usersRouter from "./routes/users";
-import accountsRouter from "./routes/accounts";
+import chatwootRouter from "./routes/chatwoot";
 
 const app = express();
 
@@ -17,7 +17,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api/users", authMiddleware, usersRouter);
-app.use("/api/accounts", authMiddleware, accountsRouter);
+app.use("/api/chatwoot", authMiddleware, chatwootRouter);
 
 app.use((err, req, res, next) => {
   console.error("Unhandled error:", err);
