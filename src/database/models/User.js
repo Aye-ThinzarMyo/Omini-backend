@@ -3,49 +3,44 @@ import sequelize from '../config/sequelize';
 
 const User = sequelize.define('User', {
   id: {
-    type: DataTypes.INTEGER,
-    primaryKey: true,
-    autoIncrement: true,
-  },
-  name: {
     type: DataTypes.STRING(255),
-    allowNull: false,
+    primaryKey: true,
   },
   email: {
     type: DataTypes.STRING(255),
     allowNull: false,
     unique: true,
   },
-  phone: {
-    type: DataTypes.STRING(50),
+  full_name: {
+    type: DataTypes.STRING(255),
+    allowNull: false,
+  },
+  chat_admin_user_id: {
+    type: DataTypes.INTEGER,
     allowNull: true,
   },
-  department: {
-    type: DataTypes.STRING(255),
+  encrypted_chat_secret: {
+    type: DataTypes.TEXT,
     allowNull: true,
   },
   role: {
     type: DataTypes.STRING(50),
     defaultValue: 'Agent',
   },
+  password: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  phone: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+  },
   status: {
     type: DataTypes.STRING(20),
     defaultValue: 'Active',
   },
-  chat_id: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-  },
-  chat_key: {
-    type: DataTypes.TEXT,
-    allowNull: true,
-  },
-  login_id: {
+  department: {
     type: DataTypes.STRING(255),
-    allowNull: true,
-  },
-  password: {
-    type: DataTypes.TEXT,
     allowNull: true,
   },
 }, {
