@@ -99,7 +99,6 @@
 //       .json({ error: "Failed to create user", detail: err.message });
 //   }
 // };
-
 import { User } from "../database/models";
 import sequelize from "../database/config/sequelize";
 import { encrypt } from "../utils/encryption";
@@ -160,6 +159,8 @@ export const createUser = async (req, res) => {
         email,
         password,
         encryptedApiKey,
+        role,
+        department,
       });
       if (role) {
         await assignRealmRole(keycloakId, role);
@@ -197,7 +198,7 @@ export const createUser = async (req, res) => {
         full_name,
         email,
         phone: phone || null,
-        department: department || null,
+        department: department || "General",
         role: role || "Agent",
         chat_admin_user_id: chatwootId,
         encrypted_chat_secret: encryptedApiKey,
