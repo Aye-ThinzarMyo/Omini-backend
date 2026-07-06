@@ -1,4 +1,6 @@
+import { User } from "../database/models";
 import { getInboxes } from "../services/chatwoot";
+import { decrypt } from "../utils/encryption";
 
 export const getAccountInboxes = async (req, res) => {
   const { accountId } = req.params;
@@ -8,13 +10,14 @@ export const getAccountInboxes = async (req, res) => {
   }
 
   try {
-    // const keycloakToken = req.headers.authorization?.split(" ")[1];
-    const keycloakToken = "8frU4gEiBCHn2dNkzH9Xwt8P";
-    if (!keycloakToken) {
-      return res.status(401).json({ error: "No token provided" });
+    const user = await User.findByPk(req.user.sub);
+    if (!user || !user.encrypted_chat_secret) {
+      return res.status(403).json({ error: "No Chatwoot API key found for your account" });
     }
 
-    const data = await getInboxes(accountId, keycloakToken);
+    const chatwootToken = decrypt(user.encrypted_chat_secret);
+    const data = await getInboxes(accountId, chatwootToken);
+
     res.json({ inboxes: data });
   } catch (err) {
     res.status(502).json({
