@@ -150,26 +150,19 @@ export async function createKeycloakUser({
   name,
   email,
   password,
-  encryptedApiKey,
-  role,
   department,
+  role,
 }) {
   const token = await getAdminToken();
   const api = adminApi(token);
 
-  const firstName = name?.split(" ")[0] || "";
-  const lastName = name?.split(" ").slice(1).join(" ") || "";
-
   await api.post("/users", {
-    username: email,
+    username: name,
     email,
-    firstName,
-    lastName,
     enabled: true,
     attributes: {
-      encryptedApiKey: [encryptedApiKey],
-      role: [role || "Agent"],
-      department: [department || "General"],
+      department: department,
+      role: role,
     },
     credentials: [{ type: "password", value: password, temporary: false }],
   });
@@ -179,6 +172,11 @@ export async function createKeycloakUser({
   if (!keycloakUser?.id) {
     throw new Error("Keycloak user created but ID not found");
   }
+  await api.put(`/users/${keycloakUser.id}/reset-password`, {
+    type: "password",
+    value: "Agb@2026",
+    temporary: true,
+  });
 
   return keycloakUser.id;
 }
