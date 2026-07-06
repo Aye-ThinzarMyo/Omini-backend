@@ -48,12 +48,8 @@ export async function createKeycloakUser({
   department,
   role,
 }) {
-  console.log("role::", role);
   const token = await getAdminToken();
   const api = adminApi(token);
-
-  // const firstName = name?.split(" ")[0] || "";
-  // const lastName = name?.split(" ").slice(1).join(" ") || "";
 
   await api.post("/users", {
     username: name,
