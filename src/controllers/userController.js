@@ -34,6 +34,7 @@ export const createUser = async (req, res) => {
 
     let chatwootResult;
     let chatwootRole;
+
     try {
       chatwootResult = await createChatwootUser({
         name: full_name,
@@ -69,7 +70,7 @@ export const createUser = async (req, res) => {
 
     try {
       keycloakId = await createKeycloakUser({
-        name: full_name,
+        name: full_name.replaceAll(" ", "").toLowerCase(),
         email,
         password,
         department,
