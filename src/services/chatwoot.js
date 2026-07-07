@@ -71,3 +71,10 @@ export async function getAgents(accountId, token) {
   );
   return data;
 }
+
+export async function getAccount(accountId, token) {
+  const { data } = await chatwootApi(token).get(
+    `/accounts/${accountId}`,
+  );
+  return data;
+}

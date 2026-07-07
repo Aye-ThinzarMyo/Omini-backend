@@ -1,5 +1,5 @@
 import { User } from "../database/models";
-import { getInboxes, getAccountUsers, getConversations, getConversation, getAgents } from "../services/chatwoot";
+import { getInboxes, getAccountUsers, getConversations, getConversation, getAgents, getAccount } from "../services/chatwoot";
 import { decrypt } from "../utils/encryption";
 
 export const getAccountInboxes = async (req, res) => {
@@ -115,6 +115,29 @@ export const getChatwootAgents = async (req, res) => {
   } catch (err) {
     res.status(502).json({
       error: "Failed to fetch agents from Chatwoot",
+      detail: err.response?.data || err.message,
+    });
+  }
+};
+
+export const getChatwootAccountDetail = async (req, res) => {
+  const { accountId } = req.params;
+
+  if (!accountId) {
+    return res.status(400).json({ error: "accountId is required" });
+  }
+
+  try {
+    const chatwootToken = await getDecryptedChatToken(req);
+    if (!chatwootToken) {
+      return res.status(403).json({ error: "No Chatwoot API key found for your account" });
+    }
+
+    const data = await getAccount(accountId, chatwootToken);
+    res.json({ account: data });
+  } catch (err) {
+    res.status(502).json({
+      error: "Failed to fetch account from Chatwoot",
       detail: err.response?.data || err.message,
     });
   }
