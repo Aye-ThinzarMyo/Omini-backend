@@ -1,8 +1,8 @@
 import axios from "axios";
 import crypto from "crypto";
 
-const FREEPBX_GQL_URL = process.env.FREEPBX_GQL_URL; // e.g. https://pbx.yourdomain.com/admin/api/api/gql
-const FREEPBX_TOKEN_URL = process.env.FREEPBX_TOKEN_URL; // e.g. https://pbx.yourdomain.com/admin/api/api/token
+const FREEPBX_GQL_URL = process.env.FREEPBX_GQL_URL;
+const FREEPBX_TOKEN_URL = process.env.FREEPBX_TOKEN_URL;
 const CLIENT_ID = process.env.FREEPBX_CLIENT_ID;
 const CLIENT_SECRET = process.env.FREEPBX_CLIENT_SECRET;
 const EXT_RANGE_START = parseInt(
