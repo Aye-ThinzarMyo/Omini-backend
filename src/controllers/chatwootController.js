@@ -1,5 +1,5 @@
 import { User } from "../database/models";
-import { getInboxes, getAccountUsers, getConversations, getConversation, getAgents, getAccount } from "../services/chatwoot";
+import { getInboxes, getAccountUsers, getConversations, getConversation, getAgents, getAccount, getReport, getDashboardData } from "../services/chatwoot";
 import { decrypt } from "../utils/encryption";
 
 export const getAccountInboxes = async (req, res) => {
@@ -138,6 +138,54 @@ export const getChatwootAccountDetail = async (req, res) => {
   } catch (err) {
     res.status(502).json({
       error: "Failed to fetch account from Chatwoot",
+      detail: err.response?.data || err.message,
+    });
+  }
+};
+
+export const getChatwootReports = async (req, res) => {
+  const { accountId } = req.params;
+  const { metric, type, since, until, id } = req.query;
+
+  if (!metric || !type || !since || !until) {
+    return res.status(400).json({ error: "metric, type, since, and until are required" });
+  }
+
+  try {
+    const chatwootToken = await getDecryptedChatToken(req);
+    if (!chatwootToken) {
+      return res.status(403).json({ error: "No Chatwoot API key found for your account" });
+    }
+
+    const data = await getReport(accountId, chatwootToken, { metric, type, since, until, id });
+    res.json({ report: data });
+  } catch (err) {
+    res.status(502).json({
+      error: "Failed to fetch report from Chatwoot",
+      detail: err.response?.data || err.message,
+    });
+  }
+};
+
+export const getChatwootDashboard = async (req, res) => {
+  const { accountId } = req.params;
+  const { since, until } = req.query;
+
+  if (!since || !until) {
+    return res.status(400).json({ error: "since and until are required" });
+  }
+
+  try {
+    const chatwootToken = await getDecryptedChatToken(req);
+    if (!chatwootToken) {
+      return res.status(403).json({ error: "No Chatwoot API key found for your account" });
+    }
+
+    const data = await getDashboardData(accountId, chatwootToken, since, until);
+    res.json(data);
+  } catch (err) {
+    res.status(502).json({
+      error: "Failed to fetch dashboard data from Chatwoot",
       detail: err.response?.data || err.message,
     });
   }
