@@ -43,3 +43,10 @@ export async function getInboxes(accountId, token) {
   );
   return data;
 }
+
+export async function getAccountUsers(accountId) {
+  const { data } = await chatwootApi(PLATFORM_TOKEN, "/platform").get(
+    `/accounts/${accountId}/account_users`,
+  );
+  return data;
+}
