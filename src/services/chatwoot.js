@@ -50,3 +50,24 @@ export async function getAccountUsers(accountId) {
   );
   return data;
 }
+
+export async function getConversations(accountId, token) {
+  const { data } = await chatwootApi(token).get(
+    `/accounts/${accountId}/conversations`,
+  );
+  return data;
+}
+
+export async function getConversation(accountId, conversationId, token) {
+  const { data } = await chatwootApi(token).get(
+    `/accounts/${accountId}/conversations/${conversationId}`,
+  );
+  return data;
+}
+
+export async function getAgents(accountId, token) {
+  const { data } = await chatwootApi(token).get(
+    `/accounts/${accountId}/agents`,
+  );
+  return data;
+}
