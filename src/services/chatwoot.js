@@ -51,9 +51,10 @@ export async function getAccountUsers(accountId) {
   return data;
 }
 
-export async function getConversations(accountId, token) {
+export async function getConversations(accountId, token, filters = {}) {
   const { data } = await chatwootApi(token).get(
     `/accounts/${accountId}/conversations`,
+    { params: filters },
   );
   return data;
 }
