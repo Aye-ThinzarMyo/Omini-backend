@@ -1,5 +1,5 @@
 import { User } from "../database/models";
-import { getInboxes, getAccountUsers, getConversations, getConversation, getAgents, getAccount, getReport, getDashboardData } from "../services/chatwoot";
+import { getInboxes, getAccountUsers, getConversations, getConversation, getAgents, getAccount, getReport, getDashboardData, getMessages, sendMessage } from "../services/chatwoot";
 import { decrypt } from "../utils/encryption";
 
 export const getAccountInboxes = async (req, res) => {
@@ -165,6 +165,53 @@ export const getChatwootReports = async (req, res) => {
   } catch (err) {
     res.status(502).json({
       error: "Failed to fetch report from Chatwoot",
+      detail: err.response?.data || err.message,
+    });
+  }
+};
+
+export const getChatwootMessages = async (req, res) => {
+  const { accountId, conversationId } = req.params;
+
+  try {
+    const chatwootToken = await getDecryptedChatToken(req);
+    if (!chatwootToken) {
+      return res.status(403).json({ error: "No Chatwoot API key found for your account" });
+    }
+
+    const data = await getMessages(accountId, conversationId, chatwootToken);
+    res.json({ messages: data });
+  } catch (err) {
+    res.status(502).json({
+      error: "Failed to fetch messages from Chatwoot",
+      detail: err.response?.data || err.message,
+    });
+  }
+};
+
+export const sendChatwootMessage = async (req, res) => {
+  const { accountId, conversationId } = req.params;
+  const { content, private: isPrivate, content_type } = req.body;
+
+  if (!content) {
+    return res.status(400).json({ error: "content is required" });
+  }
+
+  try {
+    const chatwootToken = await getDecryptedChatToken(req);
+    if (!chatwootToken) {
+      return res.status(403).json({ error: "No Chatwoot API key found for your account" });
+    }
+
+    const payload = { content };
+    if (isPrivate !== undefined) payload.private = isPrivate;
+    if (content_type) payload.content_type = content_type;
+
+    const data = await sendMessage(accountId, conversationId, chatwootToken, payload);
+    res.json({ message: data });
+  } catch (err) {
+    res.status(502).json({
+      error: "Failed to send message to Chatwoot",
       detail: err.response?.data || err.message,
     });
   }
