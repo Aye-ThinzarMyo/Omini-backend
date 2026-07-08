@@ -7,7 +7,6 @@ function chatwootApi(token, prefix = "", version = "v1") {
   return axios.create({
     baseURL: `${BASE_URL}${prefix}/api/${version}`,
     headers: {
-      "Content-Type": "application/json",
       api_access_token: token,
     },
   });
@@ -95,8 +94,12 @@ export async function getMessages(accountId, conversationId, token) {
   return data;
 }
 
-export async function sendMessage(accountId, conversationId, token, payload) {
-  const { data } = await chatwootApi(token).post(
+export async function sendMessage(accountId, conversationId, token, payload, isFormData = false) {
+  const api = chatwootApi(token);
+  if (isFormData) {
+    delete api.defaults.headers["Content-Type"];
+  }
+  const { data } = await api.post(
     `/accounts/${accountId}/conversations/${conversationId}/messages`,
     payload,
   );

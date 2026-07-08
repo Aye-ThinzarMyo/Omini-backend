@@ -1,6 +1,12 @@
 import { User } from "../database/models";
 import { getInboxes, getAccountUsers, getConversations, getConversation, getAgents, getAccount, getReport, getDashboardData, getMessages, sendMessage } from "../services/chatwoot";
 import { decrypt } from "../utils/encryption";
+import multer from "multer";
+import FormData from "form-data";
+
+const upload = multer({ storage: multer.memoryStorage() });
+
+export { upload };
 
 export const getAccountInboxes = async (req, res) => {
   const { accountId } = req.params;
@@ -193,14 +199,25 @@ export const sendChatwootMessage = async (req, res) => {
   const { accountId, conversationId } = req.params;
   const { content, private: isPrivate, content_type } = req.body;
 
-  if (!content) {
-    return res.status(400).json({ error: "content is required" });
-  }
-
   try {
     const chatwootToken = await getDecryptedChatToken(req);
     if (!chatwootToken) {
       return res.status(403).json({ error: "No Chatwoot API key found for your account" });
+    }
+
+    if (req.files && req.files.length > 0) {
+      const fd = new FormData();
+      if (content) fd.append("content", content);
+      if (isPrivate !== undefined) fd.append("private", isPrivate);
+      for (const file of req.files) {
+        fd.append("attachments[]", file.buffer, { filename: file.originalname, contentType: file.mimetype });
+      }
+      const data = await sendMessage(accountId, conversationId, chatwootToken, fd, true);
+      return res.json({ message: data });
+    }
+
+    if (!content) {
+      return res.status(400).json({ error: "content is required when no file is attached" });
     }
 
     const payload = { content };
