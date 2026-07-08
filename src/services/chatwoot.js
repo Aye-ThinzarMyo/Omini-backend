@@ -88,6 +88,21 @@ export async function getReport(accountId, token, { metric, type, since, until, 
   return data;
 }
 
+export async function getMessages(accountId, conversationId, token) {
+  const { data } = await chatwootApi(token).get(
+    `/accounts/${accountId}/conversations/${conversationId}/messages`,
+  );
+  return data;
+}
+
+export async function sendMessage(accountId, conversationId, token, payload) {
+  const { data } = await chatwootApi(token).post(
+    `/accounts/${accountId}/conversations/${conversationId}/messages`,
+    payload,
+  );
+  return data;
+}
+
 export async function getDashboardData(accountId, token, since, until) {
   const inboxData = await getInboxes(accountId, token);
   const inboxes = inboxData?.payload ?? [];
