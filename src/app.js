@@ -3,6 +3,7 @@ import cors from "cors";
 import { authMiddleware } from "./middleware/auth";
 import usersRouter from "./routes/users";
 import chatwootRouter from "./routes/chatwoot";
+import freepbxRouter from "./routes/freepbx";
 
 const app = express();
 
@@ -18,6 +19,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/api/users", authMiddleware, usersRouter);
 app.use("/api/chat", authMiddleware, chatwootRouter);
+app.use("/api/pbx", authMiddleware, freepbxRouter);
 
 app.use((err, req, res, next) => {
   console.error("Unhandled error:", err);
