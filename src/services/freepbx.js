@@ -336,3 +336,16 @@ export async function getCallRecordings() {
 
   return cdrs;
 }
+
+// 9. Get recording download URL (for frontend to open in new tab)
+export function getRecordingDownloadUrl(filename) {
+  const baseUrl = FREEPBX_TOKEN_URL.replace("/api/api/token", "");
+
+  const match = filename.match(/-(\d+\.\d+)\.\w+$/);
+  if (!match) {
+    throw new Error("Could not extract uniqueid from filename");
+  }
+  const uid = match[1];
+
+  return `${baseUrl}/config.php?display=cdr&action=download_audio&cdr_file=${uid}`;
+}
