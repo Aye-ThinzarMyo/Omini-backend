@@ -25,11 +25,29 @@ export const getCallChart = async (req, res) => {
 };
 
 export const getCallRecordingsList = async (req, res) => {
-  const { extension, limit } = req.query;
+  // const { extension, limit } = req.query;
 
   try {
     const data = await getCallRecordings();
-    res.json({ recordings: data });
+
+    const total = data.length;
+    const answered = data.filter((c) => c.disposition === "ANSWERED").length;
+    const missed = data.filter(
+      (c) =>
+        c.disposition === "NO ANSWER" ||
+        c.disposition === "BUSY" ||
+        c.disposition === "FAILED" ||
+        c.disposition === "CANCELED",
+    ).length;
+    const outbound = data.filter((c) => c.dcontext === "from-internal").length;
+    const inbound = data.filter(
+      (c) => c.dcontext !== "from-internal" && c.dcontext !== "ext-local",
+    ).length;
+
+    res.json({
+      recordings: data,
+      stats: { total, answered, missed, inbound, outbound },
+    });
   } catch (err) {
     console.error(
       "FreePBX recordings error:",
