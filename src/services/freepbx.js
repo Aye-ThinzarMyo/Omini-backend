@@ -306,14 +306,14 @@ export async function getCallsByDate(startDate, endDate) {
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
-export async function queryCdrLists(limit = 1000) {
+export async function queryCdrLists() {
   const token = await getToken();
 
   const { data } = await axios.post(
     GQL_URL,
     {
       query: `
-       query { fetchAllCdrs(first: ${limit}) { cdrs {
+       query { fetchAllCdrs(first: 1000) { cdrs {
               id uniqueid calldate clid cnum src dst dcontext
               channel dstchannel lastapp lastdata duration
               billsec disposition recordingfile did
@@ -331,8 +331,8 @@ export async function queryCdrLists(limit = 1000) {
   return data.data?.fetchAllCdrs?.cdrs ?? [];
 }
 
-export async function getCallRecordings({} = {}) {
-  const cdrs = await queryCdrLists(limit);
+export async function getCallRecordings() {
+  const cdrs = await queryCdrLists();
 
   return cdrs;
 }
