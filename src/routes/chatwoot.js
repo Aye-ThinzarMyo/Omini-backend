@@ -12,7 +12,7 @@ import {
   sendChatwootMessage,
   upload,
 } from "../controllers/chatwootController";
-console.log("hi");
+
 const router = Router();
 
 router.get("/:accountId/inboxes", getAccountInboxes);
