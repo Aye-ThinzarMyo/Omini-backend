@@ -25,8 +25,19 @@ export const getCallChart = async (req, res) => {
 };
 
 export const getCallRecordingsList = async (req, res) => {
+  const { limit, uniqueid, status, direction, duration_min, duration_max, startDate, endDate } = req.query;
+
   try {
-    const data = await getCallRecordings();
+    const data = await getCallRecordings({
+      limit: limit ? parseInt(limit) : undefined,
+      uniqueid,
+      status,
+      direction,
+      duration_min,
+      duration_max,
+      startDate,
+      endDate,
+    });
 
     const total = data.length;
     const answered = data.filter((c) => c.disposition === "ANSWERED").length;
