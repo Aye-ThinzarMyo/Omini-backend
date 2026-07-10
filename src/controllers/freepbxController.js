@@ -1,4 +1,4 @@
-import { getCallsByDate, getCallRecordings, getRecordingDownloadUrl } from "../services/freepbx";
+import { getCallsByDate, getCallRecordings, getRecordingFileStream } from "../services/freepbx";
 
 export const getCallChart = async (req, res) => {
   const { startDate, endDate } = req.query;
@@ -77,12 +77,23 @@ export const getRecordingFile = async (req, res) => {
   }
 
   try {
-    const url = getRecordingDownloadUrl(filename);
-    res.json({ download_url: url });
+    const response = await getRecordingFileStream(filename);
+
+    const ct = response.headers["content-type"] || "audio/wav";
+    const cl = response.headers["content-length"];
+    const cd = response.headers["content-disposition"] || `attachment; filename="${filename}"`;
+
+    res.set({
+      "Content-Type": ct,
+      "Content-Disposition": cd,
+    });
+    if (cl) res.set("Content-Length", cl);
+
+    response.data.pipe(res);
   } catch (err) {
-    console.error("FreePBX recording URL error:", err.message);
+    console.error("FreePBX recording download error:", err.message);
     res.status(502).json({
-      error: "Failed to get recording download URL",
+      error: "Failed to fetch recording file",
       detail: err.message,
     });
   }
