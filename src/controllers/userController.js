@@ -50,10 +50,14 @@ export const createUser = async (req, res) => {
     }
 
     const { chatwootId, apiKey } = chatwootResult;
+    const normalizedRole =
+      role?.toLowerCase() === "admin" || role?.toLowerCase() === "administrator"
+        ? "administrator"
+        : "agent";
     try {
       chatwootRole = await createChatwootAccountUser({
         user_id: chatwootId,
-        role: role || "agent",
+        role: normalizedRole,
         accountId,
       });
     } catch (err) {
