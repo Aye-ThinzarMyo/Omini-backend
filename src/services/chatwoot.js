@@ -64,15 +64,10 @@ export async function assignConversation(
   assigneeId,
   token,
 ) {
-  console.log("accountId:::", accountId);
-  console.log("conversationid::::", conversationId);
-  console.log("assigneeId:::", assigneeId);
-  console.log("token:::", token);
   const { data } = await chatwootApi(token).post(
     `/accounts/${accountId}/conversations/${conversationId}/assignments`,
     { assignee_id: assigneeId },
   );
-  console.log("data:::", data);
   return data;
 }
 
@@ -133,8 +128,10 @@ export async function sendMessage(
 }
 
 export async function updateLastSeen(accountId, conversationId, token) {
-  const { data } = await chatwootApi(token).post(
-    `/accounts/${accountId}/conversations/${conversationId}/update_last_seen`,
+  const { data } = await axios.post(
+    `${BASE_URL}/api/v1/accounts/${accountId}/conversations/${conversationId}/update_last_seen`,
+    {},
+    { headers: { api_access_token: token } },
   );
   return data;
 }
