@@ -58,6 +58,24 @@ export async function getConversations(accountId, token, filters = {}) {
   return data;
 }
 
+export async function assignConversation(
+  accountId,
+  conversationId,
+  assigneeId,
+  token,
+) {
+  console.log("accountId:::", accountId);
+  console.log("conversationid::::", conversationId);
+  console.log("assigneeId:::", assigneeId);
+  console.log("token:::", token);
+  const { data } = await chatwootApi(token).post(
+    `/accounts/${accountId}/conversations/${conversationId}/assignments`,
+    { assignee_id: assigneeId },
+  );
+  console.log("data:::", data);
+  return data;
+}
+
 export async function getConversation(accountId, conversationId, token) {
   const { data } = await chatwootApi(token).get(
     `/accounts/${accountId}/conversations/${conversationId}`,
@@ -73,13 +91,15 @@ export async function getAgents(accountId, token) {
 }
 
 export async function getAccount(accountId, token) {
-  const { data } = await chatwootApi(token).get(
-    `/accounts/${accountId}`,
-  );
+  const { data } = await chatwootApi(token).get(`/accounts/${accountId}`);
   return data;
 }
 
-export async function getReport(accountId, token, { metric, type, since, until, id }) {
+export async function getReport(
+  accountId,
+  token,
+  { metric, type, since, until, id },
+) {
   const { data } = await chatwootApi(token, "", "v2").get(
     `/accounts/${accountId}/reports`,
     { params: { metric, type, since, until, ...(id && { id }) } },
@@ -94,7 +114,13 @@ export async function getMessages(accountId, conversationId, token) {
   return data;
 }
 
-export async function sendMessage(accountId, conversationId, token, payload, isFormData = false) {
+export async function sendMessage(
+  accountId,
+  conversationId,
+  token,
+  payload,
+  isFormData = false,
+) {
   const api = chatwootApi(token);
   if (isFormData) {
     delete api.defaults.headers["Content-Type"];
@@ -102,6 +128,13 @@ export async function sendMessage(accountId, conversationId, token, payload, isF
   const { data } = await api.post(
     `/accounts/${accountId}/conversations/${conversationId}/messages`,
     payload,
+  );
+  return data;
+}
+
+export async function updateLastSeen(accountId, conversationId, token) {
+  const { data } = await chatwootApi(token).post(
+    `/accounts/${accountId}/conversations/${conversationId}/update_last_seen`,
   );
   return data;
 }

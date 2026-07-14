@@ -1,5 +1,5 @@
 import { User } from "../database/models";
-import { getInboxes, getAccountUsers, getConversations, getConversation, getAgents, getAccount, getReport, getDashboardData, getMessages, sendMessage } from "../services/chatwoot";
+import { getInboxes, getAccountUsers, getConversations, getConversation, getAgents, getAccount, getReport, getDashboardData, getMessages, sendMessage, assignConversation, updateLastSeen } from "../services/chatwoot";
 import { decrypt } from "../utils/encryption";
 import multer from "multer";
 import FormData from "form-data";
@@ -205,6 +205,8 @@ export const sendChatwootMessage = async (req, res) => {
       return res.status(403).json({ error: "No Chatwoot API key found for your account" });
     }
 
+    let messageData;
+
     if (req.files && req.files.length > 0) {
       const fd = new FormData();
       if (content) fd.append("content", content);
@@ -212,23 +214,84 @@ export const sendChatwootMessage = async (req, res) => {
       for (const file of req.files) {
         fd.append("attachments[]", file.buffer, { filename: file.originalname, contentType: file.mimetype });
       }
-      const data = await sendMessage(accountId, conversationId, chatwootToken, fd, true);
-      return res.json({ message: data });
+      messageData = await sendMessage(accountId, conversationId, chatwootToken, fd, true);
+    } else {
+      if (!content) {
+        return res.status(400).json({ error: "content is required when no file is attached" });
+      }
+
+      const payload = { content };
+      if (isPrivate !== undefined) payload.private = isPrivate;
+      if (content_type) payload.content_type = content_type;
+
+      messageData = await sendMessage(accountId, conversationId, chatwootToken, payload);
     }
 
-    if (!content) {
-      return res.status(400).json({ error: "content is required when no file is attached" });
+    // Auto-assign conversation to the replying agent if unassigned
+    try {
+      const conv = await getConversation(accountId, conversationId, chatwootToken);
+      const convData = conv?.data || conv?.payload || conv || {};
+      if (!convData.assignee_id) {
+        const user = await User.findByPk(req.user.sub);
+        if (user?.chat_admin_user_id) {
+          await assignConversation(accountId, conversationId, user.chat_admin_user_id, chatwootToken);
+        }
+      }
+    } catch (assignErr) {
+      console.warn("Auto-assign failed (non-fatal):", assignErr.message);
     }
 
-    const payload = { content };
-    if (isPrivate !== undefined) payload.private = isPrivate;
-    if (content_type) payload.content_type = content_type;
-
-    const data = await sendMessage(accountId, conversationId, chatwootToken, payload);
-    res.json({ message: data });
+    res.json({ message: messageData });
   } catch (err) {
     res.status(502).json({
       error: "Failed to send message to Chatwoot",
+      detail: err.response?.data || err.message,
+    });
+  }
+};
+
+export const markConversationRead = async (req, res) => {
+  const { accountId, conversationId } = req.params;
+
+  if (!accountId || !conversationId) {
+    return res.status(400).json({ error: "accountId and conversationId are required" });
+  }
+
+  try {
+    const chatwootToken = await getDecryptedChatToken(req);
+    if (!chatwootToken) {
+      return res.status(403).json({ error: "No Chatwoot API key found for your account" });
+    }
+
+    await updateLastSeen(accountId, conversationId, chatwootToken);
+    res.json({ success: true, message: "Conversation marked as read" });
+  } catch (err) {
+    res.status(502).json({
+      error: "Failed to mark conversation as read",
+      detail: err.response?.data || err.message,
+    });
+  }
+};
+
+export const assignConversationToAgent = async (req, res) => {
+  const { accountId, conversationId } = req.params;
+  const { assignee_id } = req.body;
+
+  if (!accountId || !conversationId || !assignee_id) {
+    return res.status(400).json({ error: "accountId, conversationId, and assignee_id are required" });
+  }
+
+  try {
+    const chatwootToken = await getDecryptedChatToken(req);
+    if (!chatwootToken) {
+      return res.status(403).json({ error: "No Chatwoot API key found for your account" });
+    }
+
+    const data = await assignConversation(accountId, conversationId, assignee_id, chatwootToken);
+    res.json({ success: true, assignment: data });
+  } catch (err) {
+    res.status(502).json({
+      error: "Failed to assign conversation",
       detail: err.response?.data || err.message,
     });
   }
