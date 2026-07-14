@@ -10,6 +10,8 @@ import {
   getChatwootDashboard,
   getChatwootMessages,
   sendChatwootMessage,
+  markConversationRead,
+  assignConversationToAgent,
   upload,
 } from "../controllers/chatwootController";
 
@@ -30,6 +32,14 @@ router.post(
   "/:accountId/conversations/:conversationId/messages",
   upload.array("attachments"),
   sendChatwootMessage,
+);
+router.post(
+  "/:accountId/conversations/:conversationId/read",
+  markConversationRead,
+);
+router.post(
+  "/:accountId/conversations/:conversationId/assign",
+  assignConversationToAgent,
 );
 router.get("/:accountId", getChatwootAccountDetail);
 
