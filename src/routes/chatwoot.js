@@ -12,6 +12,7 @@ import {
   sendChatwootMessage,
   markConversationRead,
   assignConversationToAgent,
+  addInboxMemberToAccount,
   upload,
 } from "../controllers/chatwootController";
 
@@ -41,6 +42,7 @@ router.post(
   "/:accountId/conversations/:conversationId/assign",
   assignConversationToAgent,
 );
+router.post("/:accountId/inbox_members", addInboxMemberToAccount);
 router.get("/:accountId", getChatwootAccountDetail);
 
 export default router;

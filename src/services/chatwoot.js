@@ -136,6 +136,14 @@ export async function updateLastSeen(accountId, conversationId, token) {
   return data;
 }
 
+export async function addInboxMember(accountId, inboxId, userIds, token) {
+  const { data } = await chatwootApi(token).post(
+    `/accounts/${accountId}/inbox_members`,
+    { inbox_id: inboxId, user_ids: userIds },
+  );
+  return data;
+}
+
 export async function getDashboardData(accountId, token, since, until) {
   const inboxData = await getInboxes(accountId, token);
   const inboxes = inboxData?.payload ?? [];

@@ -4,6 +4,7 @@ import { encrypt } from "../utils/encryption";
 import {
   createChatwootAccountUser,
   createChatwootUser,
+  addInboxMember,
 } from "../services/chatwoot";
 import {
   createKeycloakUser,
@@ -12,8 +13,16 @@ import {
 } from "../services/keycloak";
 
 export const createUser = async (req, res) => {
-  const { full_name, email, phone, department, role, password, accountId } =
-    req.body;
+  const {
+    full_name,
+    email,
+    phone,
+    department,
+    role,
+    password,
+    accountId,
+    inbox_id,
+  } = req.body;
 
   if (!full_name || !email || !password) {
     return res
@@ -70,6 +79,19 @@ export const createUser = async (req, res) => {
     const encryptedApiKey = encrypt(apiKey);
     const encryptedPassword = encrypt(password);
     const { resultRole } = chatwootRole;
+
+    if (inbox_id) {
+      try {
+        await addInboxMember(accountId, inbox_id, [chatwootId], apiKey);
+      } catch (err) {
+        await t.rollback();
+        return res.status(502).json({
+          error: "Failed to add agent to inbox",
+          detail: err.response?.data || err.message,
+        });
+      }
+    }
+
     let keycloakId;
 
     try {
