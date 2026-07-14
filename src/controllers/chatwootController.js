@@ -1,5 +1,5 @@
 import { User } from "../database/models";
-import { getInboxes, getAccountUsers, getConversations, getConversation, getAgents, getAccount, getReport, getDashboardData, getMessages, sendMessage, assignConversation, updateLastSeen } from "../services/chatwoot";
+import { getInboxes, getAccountUsers, getConversations, getConversation, getAgents, getAccount, getReport, getDashboardData, getMessages, sendMessage, assignConversation, updateLastSeen, addInboxMember } from "../services/chatwoot";
 import { decrypt } from "../utils/encryption";
 import multer from "multer";
 import FormData from "form-data";
@@ -292,6 +292,25 @@ export const assignConversationToAgent = async (req, res) => {
   } catch (err) {
     res.status(502).json({
       error: "Failed to assign conversation",
+      detail: err.response?.data || err.message,
+    });
+  }
+};
+
+export const addInboxMemberToAccount = async (req, res) => {
+  const { accountId } = req.params;
+  const { inbox_id, user_ids } = req.body;
+
+  if (!accountId || !inbox_id || !user_ids || !Array.isArray(user_ids)) {
+    return res.status(400).json({ error: "accountId, inbox_id, and user_ids array are required" });
+  }
+
+  try {
+    const data = await addInboxMember(accountId, inbox_id, user_ids, process.env.CHATWOOT_PLATFORM_TOKEN);
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(502).json({
+      error: "Failed to add agent to inbox",
       detail: err.response?.data || err.message,
     });
   }
