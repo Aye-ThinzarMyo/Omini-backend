@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 // import { User } from "../database/models";
 // import sequelize from "../database/config/sequelize";
 // import { encrypt } from "../utils/encryption";
@@ -99,9 +100,12 @@
 //       .json({ error: "Failed to create user", detail: err.message });
 //   }
 // };
+=======
+import jwt from "jsonwebtoken";
+>>>>>>> d615d083c5db7c203c78fab09a15d6fe370636e5
 import { User } from "../database/models";
 import sequelize from "../database/config/sequelize";
-import { encrypt } from "../utils/encryption";
+import { encrypt, decrypt } from "../utils/encryption";
 import {
   createChatwootAccountUser,
   createChatwootUser,
@@ -184,10 +188,29 @@ export const createUser = async (req, res) => {
     const encryptedApiKey = encrypt(apiKey);
     const encryptedPassword = encrypt(password);
     const { resultRole } = chatwootRole;
-
     if (inbox_id) {
       try {
-        await addInboxMember(accountId, inbox_id, [chatwootId], apiKey);
+        const token = req.headers.authorization?.split(" ")[1];
+        if (!token) {
+          await t.rollback();
+          return res.status(401).json({ error: "No Bearer token provided" });
+        }
+        const decoded = jwt.decode(token);
+        const keycloakId = decoded?.sub;
+        if (!keycloakId) {
+          await t.rollback();
+          return res.status(401).json({ error: "Invalid token: no sub claim" });
+        }
+        const adminUser = await User.findByPk(keycloakId);
+        if (!adminUser || !adminUser.encrypted_chat_secret) {
+          await t.rollback();
+          return res
+            .status(403)
+            .json({ error: "No Chatwoot API key found for your account" });
+        }
+        const adminToken = decrypt(adminUser.encrypted_chat_secret);
+
+        await addInboxMember(accountId, inbox_id, [chatwootId], adminToken);
       } catch (err) {
         await t.rollback();
         return res.status(502).json({
