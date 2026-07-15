@@ -211,6 +211,7 @@ export const sendChatwootMessage = async (req, res) => {
       const fd = new FormData();
       if (content) fd.append("content", content);
       if (isPrivate !== undefined) fd.append("private", isPrivate);
+      if (content_type) fd.append("content_type", content_type);
       for (const file of req.files) {
         fd.append("attachments[]", file.buffer, { filename: file.originalname, contentType: file.mimetype });
       }
