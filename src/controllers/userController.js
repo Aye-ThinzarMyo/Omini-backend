@@ -61,7 +61,9 @@ export const createUser = async (req, res) => {
 
     const { chatwootId, apiKey } = chatwootResult;
     const normalizedRole =
-      role?.toLowerCase() === "admin" || role?.toLowerCase() === "administrator"
+      role?.toLowerCase() === "admin" ||
+      role?.toLowerCase() === "administrator" ||
+      role?.toLowerCase() === "superadmin"
         ? "administrator"
         : "agent";
     try {
