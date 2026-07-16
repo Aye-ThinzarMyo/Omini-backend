@@ -59,7 +59,6 @@ async function getDecryptedChatToken(req) {
 
 export const getConversationsList = async (req, res) => {
   const { accountId } = req.params;
-  const { assignee_type, inbox_id, q, status } = req.query;
 
   try {
     const chatwootToken = await getDecryptedChatToken(req);
@@ -67,13 +66,7 @@ export const getConversationsList = async (req, res) => {
       return res.status(403).json({ error: "No Chatwoot API key found for your account" });
     }
 
-    const filters = {};
-    if (assignee_type) filters.assignee_type = assignee_type;
-    if (inbox_id) filters.inbox_id = inbox_id;
-    if (q) filters.q = q;
-    if (status) filters.status = status;
-
-    const data = await getConversations(accountId, chatwootToken, filters);
+    const data = await getConversations(accountId, chatwootToken, req.query);
     res.json({ conversations: data });
   } catch (err) {
     res.status(502).json({
