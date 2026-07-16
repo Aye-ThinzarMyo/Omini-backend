@@ -137,12 +137,131 @@ export async function updateLastSeen(accountId, conversationId, token) {
 }
 
 export async function addInboxMember(accountId, inboxId, userIds, token) {
-  console.log("inbox id:::", inboxId);
   const { data } = await chatwootApi(token).post(
     `/accounts/${accountId}/inbox_members`,
     { inbox_id: inboxId, user_ids: userIds },
   );
   return data;
+}
+
+export async function listContacts(accountId, token, params = {}) {
+  const { data } = await chatwootApi(token).get(
+    `/accounts/${accountId}/contacts`,
+    { params },
+  );
+  return data;
+}
+
+export async function searchContacts(accountId, token, q) {
+  const { data } = await chatwootApi(token).get(
+    `/accounts/${accountId}/contacts/search`,
+    { params: { q } },
+  );
+  return data;
+}
+
+export async function createContact(accountId, token, payload) {
+  const { data } = await chatwootApi(token).post(
+    `/accounts/${accountId}/contacts`,
+    payload,
+  );
+  return data;
+}
+
+export async function getContact(accountId, contactId, token) {
+  const { data } = await chatwootApi(token).get(
+    `/accounts/${accountId}/contacts/${contactId}`,
+  );
+  return data;
+}
+
+export async function updateContact(accountId, contactId, token, payload) {
+  const { data } = await chatwootApi(token).put(
+    `/accounts/${accountId}/contacts/${contactId}`,
+    payload,
+  );
+  return data;
+}
+
+export async function deleteContact(accountId, contactId, token) {
+  const { data } = await chatwootApi(token).delete(
+    `/accounts/${accountId}/contacts/${contactId}`,
+  );
+  return data;
+}
+
+export async function mergeContacts(
+  accountId,
+  baseContactId,
+  token,
+  mergeeContactId,
+) {
+  const { data } = await chatwootApi(token).put(
+    `/accounts/${accountId}/contacts/${baseContactId}/merge`,
+    { contact_id: mergeeContactId },
+  );
+  return data;
+}
+
+export async function getContactableInboxes(accountId, contactId, token) {
+  const { data } = await chatwootApi(token).get(
+    `/accounts/${accountId}/contacts/${contactId}/contactable_inboxes`,
+  );
+  return data;
+}
+
+export async function createContactInbox(accountId, contactId, token, payload) {
+  const { data } = await chatwootApi(token).post(
+    `/accounts/${accountId}/contacts/${contactId}/contact_inboxes`,
+    payload,
+  );
+  return data;
+}
+
+export async function getContactConversations(accountId, contactId, token) {
+  const { data } = await chatwootApi(token).get(
+    `/accounts/${accountId}/contacts/${contactId}/conversations`,
+  );
+  return data;
+}
+
+export async function findOrCreateContact(
+  accountId,
+  token,
+  { email, phone_number, name, identifier, inbox_id },
+) {
+  if (email) {
+    try {
+      const searchResult = await searchContacts(accountId, token, email);
+      const contacts = searchResult?.payload ?? [];
+      if (contacts.length > 0) {
+        return { contact: contacts[0], created: false };
+      }
+    } catch (e) {
+      // search failed, proceed to create
+    }
+  }
+
+  if (phone_number && !email) {
+    try {
+      const searchResult = await searchContacts(accountId, token, phone_number);
+      const contacts = searchResult?.payload ?? [];
+      if (contacts.length > 0) {
+        return { contact: contacts[0], created: false };
+      }
+    } catch (e) {
+      // search failed, proceed to create
+    }
+  }
+
+  const payload = { inbox_id, name, email, phone_number, identifier };
+  Object.keys(payload).forEach(
+    (k) => payload[k] === undefined && delete payload[k],
+  );
+
+  const result = await createContact(accountId, token, payload);
+  const contact = result?.payload ?? result;
+  return { contact, created: true };
 }
 
 export async function getDashboardData(accountId, token, since, until) {

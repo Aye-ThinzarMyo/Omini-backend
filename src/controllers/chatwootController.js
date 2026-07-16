@@ -1,5 +1,12 @@
 import { User } from "../database/models";
-import { getInboxes, getAccountUsers, getConversations, getConversation, getAgents, getAccount, getReport, getDashboardData, getMessages, sendMessage, assignConversation, updateLastSeen, addInboxMember } from "../services/chatwoot";
+import {
+  getInboxes, getAccountUsers, getConversations, getConversation,
+  getAgents, getAccount, getReport, getDashboardData, getMessages,
+  sendMessage, assignConversation, updateLastSeen, addInboxMember,
+  listContacts, searchContacts, createContact, getContact,
+  updateContact, deleteContact, mergeContacts,
+  getContactableInboxes, createContactInbox, getContactConversations,
+} from "../services/chatwoot";
 import { decrypt } from "../utils/encryption";
 import multer from "multer";
 import FormData from "form-data";
@@ -329,6 +336,214 @@ export const getChatwootDashboard = async (req, res) => {
   } catch (err) {
     res.status(502).json({
       error: "Failed to fetch dashboard data from Chatwoot",
+      detail: err.response?.data || err.message,
+    });
+  }
+};
+
+export const getContactList = async (req, res) => {
+  const { accountId } = req.params;
+
+  try {
+    const chatwootToken = await getDecryptedChatToken(req);
+    if (!chatwootToken) {
+      return res.status(403).json({ error: "No Chatwoot API key found for your account" });
+    }
+    const data = await listContacts(accountId, chatwootToken, req.query);
+    res.json(data);
+  } catch (err) {
+    res.status(502).json({
+      error: "Failed to list contacts",
+      detail: err.response?.data || err.message,
+    });
+  }
+};
+
+export const getContactSearch = async (req, res) => {
+  const { accountId } = req.params;
+  const { q } = req.query;
+
+  if (!q) {
+    return res.status(400).json({ error: "Search query q is required" });
+  }
+
+  try {
+    const chatwootToken = await getDecryptedChatToken(req);
+    if (!chatwootToken) {
+      return res.status(403).json({ error: "No Chatwoot API key found for your account" });
+    }
+    const data = await searchContacts(accountId, chatwootToken, q);
+    res.json(data);
+  } catch (err) {
+    res.status(502).json({
+      error: "Failed to search contacts",
+      detail: err.response?.data || err.message,
+    });
+  }
+};
+
+export const postCreateContact = async (req, res) => {
+  const { accountId } = req.params;
+
+  try {
+    const chatwootToken = await getDecryptedChatToken(req);
+    if (!chatwootToken) {
+      return res.status(403).json({ error: "No Chatwoot API key found for your account" });
+    }
+    const data = await createContact(accountId, chatwootToken, req.body);
+    res.status(201).json(data);
+  } catch (err) {
+    res.status(502).json({
+      error: "Failed to create contact",
+      detail: err.response?.data || err.message,
+    });
+  }
+};
+
+export const getContactDetail = async (req, res) => {
+  const { accountId, contactId } = req.params;
+
+  try {
+    const chatwootToken = await getDecryptedChatToken(req);
+    if (!chatwootToken) {
+      return res.status(403).json({ error: "No Chatwoot API key found for your account" });
+    }
+    const data = await getContact(accountId, contactId, chatwootToken);
+    res.json(data);
+  } catch (err) {
+    res.status(502).json({
+      error: "Failed to fetch contact",
+      detail: err.response?.data || err.message,
+    });
+  }
+};
+
+export const putUpdateContact = async (req, res) => {
+  const { accountId, contactId } = req.params;
+
+  try {
+    const chatwootToken = await getDecryptedChatToken(req);
+    if (!chatwootToken) {
+      return res.status(403).json({ error: "No Chatwoot API key found for your account" });
+    }
+    const data = await updateContact(accountId, contactId, chatwootToken, req.body);
+    res.json(data);
+  } catch (err) {
+    res.status(502).json({
+      error: "Failed to update contact",
+      detail: err.response?.data || err.message,
+    });
+  }
+};
+
+export const deleteContactById = async (req, res) => {
+  const { accountId, contactId } = req.params;
+
+  try {
+    const chatwootToken = await getDecryptedChatToken(req);
+    if (!chatwootToken) {
+      return res.status(403).json({ error: "No Chatwoot API key found for your account" });
+    }
+    const data = await deleteContact(accountId, contactId, chatwootToken);
+    res.json(data);
+  } catch (err) {
+    res.status(502).json({
+      error: "Failed to delete contact",
+      detail: err.response?.data || err.message,
+    });
+  }
+};
+
+export const putBlockContact = async (req, res) => {
+  const { accountId, contactId } = req.params;
+
+  try {
+    const chatwootToken = await getDecryptedChatToken(req);
+    if (!chatwootToken) {
+      return res.status(403).json({ error: "No Chatwoot API key found for your account" });
+    }
+    const data = await updateContact(accountId, contactId, chatwootToken, { blocked: true });
+    res.json(data);
+  } catch (err) {
+    res.status(502).json({
+      error: "Failed to block contact",
+      detail: err.response?.data || err.message,
+    });
+  }
+};
+
+export const putMergeContact = async (req, res) => {
+  const { accountId, contactId } = req.params;
+  const { contact_id } = req.body;
+
+  if (!contact_id) {
+    return res.status(400).json({ error: "contact_id is required in request body" });
+  }
+
+  try {
+    const chatwootToken = await getDecryptedChatToken(req);
+    if (!chatwootToken) {
+      return res.status(403).json({ error: "No Chatwoot API key found for your account" });
+    }
+    const data = await mergeContacts(accountId, contactId, chatwootToken, contact_id);
+    res.json(data);
+  } catch (err) {
+    res.status(502).json({
+      error: "Failed to merge contacts",
+      detail: err.response?.data || err.message,
+    });
+  }
+};
+
+export const getContactInboxes = async (req, res) => {
+  const { accountId, contactId } = req.params;
+
+  try {
+    const chatwootToken = await getDecryptedChatToken(req);
+    if (!chatwootToken) {
+      return res.status(403).json({ error: "No Chatwoot API key found for your account" });
+    }
+    const data = await getContactableInboxes(accountId, contactId, chatwootToken);
+    res.json(data);
+  } catch (err) {
+    res.status(502).json({
+      error: "Failed to fetch contactable inboxes",
+      detail: err.response?.data || err.message,
+    });
+  }
+};
+
+export const postCreateContactInbox = async (req, res) => {
+  const { accountId, contactId } = req.params;
+
+  try {
+    const chatwootToken = await getDecryptedChatToken(req);
+    if (!chatwootToken) {
+      return res.status(403).json({ error: "No Chatwoot API key found for your account" });
+    }
+    const data = await createContactInbox(accountId, contactId, chatwootToken, req.body);
+    res.status(201).json(data);
+  } catch (err) {
+    res.status(502).json({
+      error: "Failed to create contact inbox",
+      detail: err.response?.data || err.message,
+    });
+  }
+};
+
+export const getContactConversationList = async (req, res) => {
+  const { accountId, contactId } = req.params;
+
+  try {
+    const chatwootToken = await getDecryptedChatToken(req);
+    if (!chatwootToken) {
+      return res.status(403).json({ error: "No Chatwoot API key found for your account" });
+    }
+    const data = await getContactConversations(accountId, contactId, chatwootToken);
+    res.json(data);
+  } catch (err) {
+    res.status(502).json({
+      error: "Failed to fetch contact conversations",
       detail: err.response?.data || err.message,
     });
   }
