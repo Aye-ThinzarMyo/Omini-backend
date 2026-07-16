@@ -102,7 +102,11 @@ export const createUser = async (req, res) => {
         }
         const adminToken = decrypt(adminUser.encrypted_chat_secret);
 
-        await addInboxMember(accountId, inbox_id, [chatwootId], adminToken);
+        const inboxIds = Array.isArray(inbox_id) ? inbox_id : [inbox_id];
+        for (const id of inboxIds) {
+          await addInboxMember(accountId, id, [chatwootId], adminToken);
+        }
+        console.log("done add inbox member");
       } catch (err) {
         await t.rollback();
         return res.status(502).json({

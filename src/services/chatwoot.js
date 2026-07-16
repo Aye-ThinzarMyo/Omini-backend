@@ -137,6 +137,7 @@ export async function updateLastSeen(accountId, conversationId, token) {
 }
 
 export async function addInboxMember(accountId, inboxId, userIds, token) {
+  console.log("inbox id:::", inboxId);
   const { data } = await chatwootApi(token).post(
     `/accounts/${accountId}/inbox_members`,
     { inbox_id: inboxId, user_ids: userIds },
