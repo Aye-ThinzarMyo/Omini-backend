@@ -64,7 +64,7 @@ router.get("/:accountId/contacts/:contactId", getContactDetail);
 router.put("/:accountId/contacts/:contactId", putUpdateContact);
 router.delete("/:accountId/contacts/:contactId", deleteContactById);
 router.put("/:accountId/contacts/:contactId/block", putBlockContact);
-router.put("/:accountId/contacts/:contactId/merge", putMergeContact);
+router.post("/:accountId/contacts/merge", putMergeContact);
 router.get("/:accountId/contacts/:contactId/contactable_inboxes", getContactInboxes);
 router.post("/:accountId/contacts/:contactId/contact_inboxes", postCreateContactInbox);
 router.get("/:accountId/contacts/:contactId/conversations", getContactConversationList);

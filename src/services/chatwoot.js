@@ -192,13 +192,13 @@ export async function deleteContact(accountId, contactId, token) {
 
 export async function mergeContacts(
   accountId,
-  baseContactId,
   token,
+  baseContactId,
   mergeeContactId,
 ) {
-  const { data } = await chatwootApi(token).put(
-    `/accounts/${accountId}/contacts/${baseContactId}/merge`,
-    { contact_id: mergeeContactId },
+  const { data } = await chatwootApi(token).post(
+    `/accounts/${accountId}/actions/contact_merge`,
+    { base_contact_id: baseContactId, mergee_contact_id: mergeeContactId },
   );
   return data;
 }
