@@ -473,11 +473,11 @@ export const putBlockContact = async (req, res) => {
 };
 
 export const putMergeContact = async (req, res) => {
-  const { accountId, contactId } = req.params;
-  const { contact_id } = req.body;
+  const { accountId } = req.params;
+  const { base_contact_id, mergee_contact_id } = req.body;
 
-  if (!contact_id) {
-    return res.status(400).json({ error: "contact_id is required in request body" });
+  if (!base_contact_id || !mergee_contact_id) {
+    return res.status(400).json({ error: "base_contact_id and mergee_contact_id are required" });
   }
 
   try {
@@ -485,7 +485,7 @@ export const putMergeContact = async (req, res) => {
     if (!chatwootToken) {
       return res.status(403).json({ error: "No Chatwoot API key found for your account" });
     }
-    const data = await mergeContacts(accountId, contactId, chatwootToken, contact_id);
+    const data = await mergeContacts(accountId, chatwootToken, base_contact_id, mergee_contact_id);
     res.json(data);
   } catch (err) {
     res.status(502).json({
