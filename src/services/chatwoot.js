@@ -165,6 +165,7 @@ export async function createContact(accountId, token, payload) {
     `/accounts/${accountId}/contacts`,
     payload,
   );
+
   return data;
 }
 
