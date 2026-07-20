@@ -47,6 +47,7 @@ export async function createKeycloakUser({
   password,
   department,
   role,
+  fullname,
 }) {
   const token = await getAdminToken();
   const api = adminApi(token);
@@ -58,6 +59,7 @@ export async function createKeycloakUser({
     attributes: {
       department: department,
       role: role,
+      fullname: fullname,
     },
   });
 
@@ -95,4 +97,37 @@ export async function deleteKeycloakUser(keycloakUserId) {
   const api = adminApi(token);
 
   await api.delete(`/users/${keycloakUserId}`);
+}
+
+export async function updateKeycloakUser(
+  keycloakUserId,
+  { email, name, department, role, fullname },
+) {
+  const token = await getAdminToken();
+  const api = adminApi(token);
+
+  const payload = {};
+  // if (name) {
+  //   payload.username = name;
+  // }
+  if (email) payload.email = email;
+  if (department || role) {
+    payload.attributes = {};
+    if (department) payload.attributes.department = department;
+    if (role) payload.attributes.role = role;
+    if (fullname) payload.attributes.fullname = fullname;
+  }
+
+  await api.put(`/users/${keycloakUserId}`, payload);
+}
+
+export async function resetKeycloakPassword(keycloakUserId, password) {
+  const token = await getAdminToken();
+  const api = adminApi(token);
+
+  await api.put(`/users/${keycloakUserId}/reset-password`, {
+    type: "password",
+    value: password,
+    temporary: false,
+  });
 }

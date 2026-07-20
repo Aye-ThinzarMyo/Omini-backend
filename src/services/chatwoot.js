@@ -25,6 +25,15 @@ export async function createChatwootUser({ name, email, password }) {
   return { chatwootId: data.id, apiKey: data.access_token };
 }
 
+export async function updateChatwootUserPlatform(userId, payload) {
+  const { data } = await chatwootApi(PLATFORM_TOKEN, "/platform").put(
+    `/users/${userId}`,
+    payload,
+  );
+  console.log("atzm data;:::", data);
+  return data;
+}
+
 export async function createChatwootAccountUser({ user_id, role, accountId }) {
   const { data } = await chatwootApi(PLATFORM_TOKEN, "/platform").post(
     `/accounts/${accountId}/account_users`,
@@ -81,6 +90,14 @@ export async function getConversation(accountId, conversationId, token) {
 export async function getAgents(accountId, token) {
   const { data } = await chatwootApi(token).get(
     `/accounts/${accountId}/agents`,
+  );
+  return data;
+}
+
+export async function updateAgent(accountId, agentId, token, payload) {
+  const { data } = await chatwootApi(token).patch(
+    `/accounts/${accountId}/agents/${agentId}`,
+    payload,
   );
   return data;
 }
@@ -237,11 +254,23 @@ export async function createConversation(accountId, token, payload) {
 export async function startConversationAndSendMessage(
   accountId,
   token,
-  { contact_id, inbox_id, source_id, content, message_type, private: isPrivate, content_type },
+  {
+    contact_id,
+    inbox_id,
+    source_id,
+    content,
+    message_type,
+    private: isPrivate,
+    content_type,
+  },
 ) {
   let conversationId;
 
-  const contactConvData = await getContactConversations(accountId, contact_id, token);
+  const contactConvData = await getContactConversations(
+    accountId,
+    contact_id,
+    token,
+  );
   const existingConvs = contactConvData?.payload ?? [];
   const openConv = existingConvs.find(
     (c) => c.inbox_id === inbox_id && c.status === "open",
@@ -265,7 +294,12 @@ export async function startConversationAndSendMessage(
   if (isPrivate !== undefined) payload.private = isPrivate;
   if (content_type) payload.content_type = content_type;
 
-  const messageResult = await sendMessage(accountId, conversationId, token, payload);
+  const messageResult = await sendMessage(
+    accountId,
+    conversationId,
+    token,
+    payload,
+  );
   return { conversationId, message: messageResult };
 }
 
