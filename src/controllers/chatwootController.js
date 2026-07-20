@@ -6,6 +6,7 @@ import {
   listContacts, searchContacts, createContact, getContact,
   updateContact, deleteContact, mergeContacts,
   getContactableInboxes, createContactInbox, getContactConversations,
+  createConversation, startConversationAndSendMessage,
 } from "../services/chatwoot";
 import { decrypt } from "../utils/encryption";
 import multer from "multer";
@@ -544,6 +545,42 @@ export const getContactConversationList = async (req, res) => {
   } catch (err) {
     res.status(502).json({
       error: "Failed to fetch contact conversations",
+      detail: err.response?.data || err.message,
+    });
+  }
+};
+
+export const postCreateConversation = async (req, res) => {
+  const { accountId } = req.params;
+
+  try {
+    const chatwootToken = await getDecryptedChatToken(req);
+    if (!chatwootToken) {
+      return res.status(403).json({ error: "No Chatwoot API key found for your account" });
+    }
+    const data = await createConversation(accountId, chatwootToken, req.body);
+    res.status(201).json(data);
+  } catch (err) {
+    res.status(502).json({
+      error: "Failed to create conversation",
+      detail: err.response?.data || err.message,
+    });
+  }
+};
+
+export const postStartConversation = async (req, res) => {
+  const { accountId } = req.params;
+
+  try {
+    const chatwootToken = await getDecryptedChatToken(req);
+    if (!chatwootToken) {
+      return res.status(403).json({ error: "No Chatwoot API key found for your account" });
+    }
+    const data = await startConversationAndSendMessage(accountId, chatwootToken, req.body);
+    res.status(201).json(data);
+  } catch (err) {
+    res.status(502).json({
+      error: "Failed to start conversation",
       detail: err.response?.data || err.message,
     });
   }
