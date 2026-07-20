@@ -226,43 +226,47 @@ export async function getContactConversations(accountId, contactId, token) {
   return data;
 }
 
-export async function findOrCreateContact(
+export async function createConversation(accountId, token, payload) {
+  const { data } = await chatwootApi(token).post(
+    `/accounts/${accountId}/conversations`,
+    payload,
+  );
+  return data;
+}
+
+export async function startConversationAndSendMessage(
   accountId,
   token,
-  { email, phone_number, name, identifier, inbox_id },
+  { contact_id, inbox_id, source_id, content, message_type, private: isPrivate, content_type },
 ) {
-  if (email) {
-    try {
-      const searchResult = await searchContacts(accountId, token, email);
-      const contacts = searchResult?.payload ?? [];
-      if (contacts.length > 0) {
-        return { contact: contacts[0], created: false };
-      }
-    } catch (e) {
-      // search failed, proceed to create
-    }
-  }
+  let conversationId;
 
-  if (phone_number && !email) {
-    try {
-      const searchResult = await searchContacts(accountId, token, phone_number);
-      const contacts = searchResult?.payload ?? [];
-      if (contacts.length > 0) {
-        return { contact: contacts[0], created: false };
-      }
-    } catch (e) {
-      // search failed, proceed to create
-    }
-  }
-
-  const payload = { inbox_id, name, email, phone_number, identifier };
-  Object.keys(payload).forEach(
-    (k) => payload[k] === undefined && delete payload[k],
+  const contactConvData = await getContactConversations(accountId, contact_id, token);
+  const existingConvs = contactConvData?.payload ?? [];
+  const openConv = existingConvs.find(
+    (c) => c.inbox_id === inbox_id && c.status === "open",
   );
 
-  const result = await createContact(accountId, token, payload);
-  const contact = result?.payload ?? result;
-  return { contact, created: true };
+  if (openConv) {
+    conversationId = openConv.id;
+  } else {
+    const newConv = await createConversation(accountId, token, {
+      source_id,
+      contact_id,
+      inbox_id,
+    });
+    conversationId = newConv?.data?.id || newConv?.id;
+    if (!conversationId) {
+      throw new Error("Failed to create conversation");
+    }
+  }
+
+  const payload = { content, message_type: message_type || "outgoing" };
+  if (isPrivate !== undefined) payload.private = isPrivate;
+  if (content_type) payload.content_type = content_type;
+
+  const messageResult = await sendMessage(accountId, conversationId, token, payload);
+  return { conversationId, message: messageResult };
 }
 
 export async function getDashboardData(accountId, token, since, until) {

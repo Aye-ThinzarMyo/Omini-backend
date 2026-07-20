@@ -25,6 +25,8 @@ import {
   getContactInboxes,
   postCreateContactInbox,
   getContactConversationList,
+  postCreateConversation,
+  postStartConversation,
 } from "../controllers/chatwootController";
 
 const router = Router();
@@ -68,5 +70,7 @@ router.post("/:accountId/contacts/merge", putMergeContact);
 router.get("/:accountId/contacts/:contactId/contactable_inboxes", getContactInboxes);
 router.post("/:accountId/contacts/:contactId/contact_inboxes", postCreateContactInbox);
 router.get("/:accountId/contacts/:contactId/conversations", getContactConversationList);
+router.post("/:accountId/conversations", postCreateConversation);
+router.post("/:accountId/conversations/start", postStartConversation);
 
 export default router;
