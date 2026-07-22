@@ -1,4 +1,5 @@
 import { User } from "../database/models";
+import { Op } from "sequelize";
 import {
   getInboxes, getAccountUsers, getConversations, getConversation,
   getAgents, getAccount, getReport, getDashboardData, getMessages,
@@ -110,23 +111,36 @@ export const getConversationDetail = async (req, res) => {
 
 export const getChatwootAgents = async (req, res) => {
   const { accountId } = req.params;
-
-  if (!accountId) {
-    return res.status(400).json({ error: "accountId is required" });
-  }
+  const { q } = req.query;
 
   try {
-    const chatwootToken = await getDecryptedChatToken(req);
-    if (!chatwootToken) {
-      return res.status(403).json({ error: "No Chatwoot API key found for your account" });
+    const where = {};
+    if (q) {
+      where[Op.or] = [
+        { full_name: { [Op.iLike]: `%${q}%` } },
+        { email: { [Op.iLike]: `%${q}%` } },
+      ];
     }
 
-    const data = await getAgents(accountId, chatwootToken);
-    res.json({ agents: data });
+    const users = await User.findAll({
+      where,
+      attributes: [
+        "id",
+        "chat_admin_user_id",
+        "full_name",
+        "email",
+        "role",
+        "department",
+        "phone",
+        "status",
+      ],
+    });
+
+    res.json({ agents: users });
   } catch (err) {
-    res.status(502).json({
-      error: "Failed to fetch agents from Chatwoot",
-      detail: err.response?.data || err.message,
+    res.status(500).json({
+      error: "Failed to fetch agents",
+      detail: err.message,
     });
   }
 };
