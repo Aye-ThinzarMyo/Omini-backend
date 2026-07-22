@@ -9,6 +9,7 @@ import {
   getContactableInboxes, createContactInbox, getContactConversations,
   createConversation, startConversationAndSendMessage,
   getUserPlatform,
+  updateAccountPlatform,
 } from "../services/chatwoot";
 import { decrypt } from "../utils/encryption";
 import multer from "multer";
@@ -615,6 +616,33 @@ export const getUserDetail = async (req, res) => {
     res.json({ user: userData });
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch user", detail: err.message });
+  }
+};
+
+export const updateChatwootAccount = async (req, res) => {
+  const { accountId } = req.params;
+  const { name, locale, domain, support_email, status, limits, custom_attributes, phone } = req.body;
+
+  try {
+    const payload = {};
+    if (name) payload.name = name;
+    if (locale) payload.locale = locale;
+    if (domain) payload.domain = domain;
+    if (support_email) payload.support_email = support_email;
+    if (status) payload.status = status;
+    if (limits) payload.limits = limits;
+    if (custom_attributes || phone) {
+      payload.custom_attributes = { ...custom_attributes };
+      if (phone) payload.custom_attributes.phone_number = phone;
+    }
+
+    const data = await updateAccountPlatform(accountId, payload);
+    res.json({ account: data });
+  } catch (err) {
+    res.status(502).json({
+      error: "Failed to update account",
+      detail: err.response?.data || err.message,
+    });
   }
 };
 

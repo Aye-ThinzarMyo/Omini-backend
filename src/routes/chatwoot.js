@@ -28,6 +28,7 @@ import {
   postCreateConversation,
   postStartConversation,
   getUserDetail,
+  updateChatwootAccount,
 } from "../controllers/chatwootController";
 
 const router = Router();
@@ -74,5 +75,6 @@ router.get("/:accountId/contacts/:contactId/conversations", getContactConversati
 router.post("/:accountId/conversations", postCreateConversation);
 router.post("/:accountId/conversations/start", postStartConversation);
 router.get("/users/:userId", getUserDetail);
+router.put("/:accountId/account", updateChatwootAccount);
 
 export default router;
