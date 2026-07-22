@@ -7,6 +7,7 @@ import {
   updateContact, deleteContact, mergeContacts,
   getContactableInboxes, createContactInbox, getContactConversations,
   createConversation, startConversationAndSendMessage,
+  getUserPlatform,
 } from "../services/chatwoot";
 import { decrypt } from "../utils/encryption";
 import multer from "multer";
@@ -585,3 +586,21 @@ export const postStartConversation = async (req, res) => {
     });
   }
 };
+
+export const getUserDetail = async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    const user = await User.findOne({ where: { chat_admin_user_id: userId } });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    const userData = user.toJSON();
+    delete userData.encrypted_chat_secret;
+    delete userData.password;
+    res.json({ user: userData });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch user", detail: err.message });
+  }
+};
+
