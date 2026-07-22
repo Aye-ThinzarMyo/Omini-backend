@@ -34,6 +34,19 @@ export async function updateChatwootUserPlatform(userId, payload) {
   return data;
 }
 
+export async function getUserPlatform(userId) {
+  const { data } = await chatwootApi(PLATFORM_TOKEN, "/platform").get(
+    `/users/${userId}`,
+  );
+  return data;
+}
+
+export async function deleteUserPlatform(userId) {
+  await chatwootApi(PLATFORM_TOKEN, "/platform").delete(
+    `/users/${userId}`,
+  );
+}
+
 export async function createChatwootAccountUser({ user_id, role, accountId }) {
   const { data } = await chatwootApi(PLATFORM_TOKEN, "/platform").post(
     `/accounts/${accountId}/account_users`,

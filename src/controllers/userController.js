@@ -7,6 +7,7 @@ import {
   createChatwootUser,
   addInboxMember,
   updateChatwootUserPlatform,
+  deleteUserPlatform,
 } from "../services/chatwoot";
 import {
   createKeycloakUser,
@@ -63,6 +64,9 @@ export const createUser = async (req, res) => {
     }
 
     const { chatwootId, apiKey } = chatwootResult;
+
+    console.log("chat woot id:::", chatwootId);
+    console.log("api key:::", apiKey);
     const normalizedRole =
       role?.toLowerCase() === "admin" ||
       role?.toLowerCase() === "administrator" ||
@@ -289,5 +293,40 @@ export const updateUser = async (req, res) => {
     res
       .status(500)
       .json({ error: "Failed to update user", detail: err.message });
+  }
+};
+
+export const deleteUser = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const user = await User.findOne({ where: { chat_admin_user_id: id } });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Delete from Chatwoot
+    try {
+      await deleteUserPlatform(id);
+    } catch (err) {
+      console.error("Chatwoot delete failed:", err.message);
+    }
+
+    // Delete from Keycloak
+    try {
+      await deleteKeycloakUser(user.id);
+    } catch (err) {
+      console.error("Keycloak delete failed:", err.message);
+    }
+
+    // Delete from database
+    await user.destroy();
+
+    res.json({ message: "User deleted" });
+  } catch (err) {
+    console.error("User delete failed:", err);
+    res
+      .status(500)
+      .json({ error: "Failed to delete user", detail: err.message });
   }
 };
