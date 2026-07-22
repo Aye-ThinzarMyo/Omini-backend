@@ -120,6 +120,14 @@ export async function getAccount(accountId, token) {
   return data;
 }
 
+export async function updateAccountPlatform(accountId, payload) {
+  const { data } = await chatwootApi(PLATFORM_TOKEN, "/platform").put(
+    `/accounts/${accountId}`,
+    payload,
+  );
+  return data;
+}
+
 export async function getReport(
   accountId,
   token,
