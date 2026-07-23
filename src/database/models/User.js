@@ -43,6 +43,14 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING(255),
     allowNull: true,
   },
+  freepbx_extension_id: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+  },
+  encrypted_freepbx_secret: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
 }, {
   tableName: 'users',
   timestamps: true,

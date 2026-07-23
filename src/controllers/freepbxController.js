@@ -1,4 +1,55 @@
 import { getCallsByDate, getCallRecordings, getRecordingFileStream } from "../services/freepbx";
+import { User } from "../database/models";
+import { decrypt } from "../utils/encryption";
+
+const SIP_DOMAIN = process.env.FREEPBX_SIP_DOMAIN || "172.19.1.216";
+const SIP_WS_SERVERS = process.env.FREEPBX_SIP_WS_SERVERS || "wss://freepbx-uat.agbisp.net:8089/ws";
+
+export const getSipConfig = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.sub);
+    if (!user || !user.freepbx_extension_id) {
+      return res.status(404).json({ error: "SIP config not found for this user" });
+    }
+
+    const extension = user.freepbx_extension_id;
+    const password = user.encrypted_freepbx_secret
+      ? decrypt(user.encrypted_freepbx_secret)
+      : "";
+
+    const sipConfig = {
+      domain: SIP_DOMAIN,
+      uri: `sip:${extension}@${SIP_DOMAIN}`,
+      password,
+      wsServers: SIP_WS_SERVERS,
+      display_name: extension,
+      debug: true,
+      session_timers_refresh_method: "invite",
+      ice_servers: [{ urls: ["stun:stun.l.google.com:19302"] }],
+      hackIpInContact: true,
+    };
+
+    res.json({ sip: [sipConfig] });
+  } catch (err) {
+    console.error("SIP config error:", err.message);
+    res.status(500).json({ error: "Failed to fetch SIP config", detail: err.message });
+  }
+};
+
+export const getDepartments = async (req, res) => {
+  try {
+    const kcUser = await getKeycloakUser(req.user.sub);
+    const attributes = kcUser.attributes || {};
+    const departments = attributes.departments || [];
+
+    const deptList = Array.isArray(departments) ? departments : JSON.parse(departments);
+
+    res.json({ departments: deptList });
+  } catch (err) {
+    console.error("Departments error:", err.message);
+    res.status(500).json({ error: "Failed to fetch departments", detail: err.message });
+  }
+};
 
 export const getCallChart = async (req, res) => {
   const { startDate, endDate } = req.query;

@@ -131,3 +131,11 @@ export async function resetKeycloakPassword(keycloakUserId, password) {
     temporary: false,
   });
 }
+
+export async function getKeycloakUser(keycloakUserId) {
+  const token = await getAdminToken();
+  const api = adminApi(token);
+
+  const { data } = await api.get(`/users/${keycloakUserId}`);
+  return data;
+}
