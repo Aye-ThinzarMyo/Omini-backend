@@ -298,7 +298,7 @@ export const updateUser = async (req, res) => {
 
 export const deleteUser = async (req, res) => {
   const { id } = req.params;
-
+  console.log("hi");
   try {
     const user = await User.findOne({ where: { chat_admin_user_id: id } });
     if (!user) {
