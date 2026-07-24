@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "nodemon --exec npx babel-node src/server.js",
+    "build": "babel src -d dist",
     "start": "npx babel-node src/server.js",
     "migrate": "npx sequelize-cli db:migrate",
     "seed": "npx sequelize-cli db:seed:all",
