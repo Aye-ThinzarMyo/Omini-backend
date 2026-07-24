@@ -454,22 +454,19 @@ export async function getRecordingFileStream(filename) {
 
   const baseUrl = FREEPBX_TOKEN_URL.replace("/api/api/token", "");
 
-  const response = await axios.get(
-    `${baseUrl}/config.php`,
-    {
-      params: {
-        display: "cdr",
-        action: "download_audio",
-        cdr_file: uid,
-      },
-      headers: {
-        Cookie: cookie,
-        Referer: `${baseUrl}/config.php?display=cdr`,
-        Accept: "application/octet-stream,*/*",
-      },
-      responseType: "stream",
+  const response = await axios.get(`${baseUrl}/config.php`, {
+    params: {
+      display: "cdr",
+      action: "download_audio",
+      cdr_file: uid,
     },
-  );
+    headers: {
+      Cookie: cookie,
+      Referer: `${baseUrl}/config.php?display=cdr`,
+      Accept: "application/octet-stream,*/*",
+    },
+    responseType: "stream",
+  });
 
   return response;
 }
