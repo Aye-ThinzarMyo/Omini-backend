@@ -306,14 +306,18 @@ export async function getCallsByDate(startDate, endDate) {
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
-export async function queryCdrLists() {
+export async function queryCdrLists({ limit = 1000, startDate, endDate } = {}) {
   const token = await getToken();
+
+  let args = `first: ${limit}`;
+  if (startDate) args += `, startDate: "${startDate}"`;
+  if (endDate) args += `, endDate: "${endDate}"`;
 
   const { data } = await axios.post(
     GQL_URL,
     {
       query: `
-       query { fetchAllCdrs(first: 1000) { cdrs {
+       query { fetchAllCdrs(${args}) { cdrs {
               id uniqueid calldate clid cnum src dst dcontext
               channel dstchannel lastapp lastdata duration
               billsec disposition recordingfile did
@@ -331,15 +335,116 @@ export async function queryCdrLists() {
   return data.data?.fetchAllCdrs?.cdrs ?? [];
 }
 
-export async function getCallRecordings() {
-  const cdrs = await queryCdrLists();
+const dispositionMap = {
+  answered: "ANSWERED",
+  missed: "NO ANSWER",
+  cancelled: "CANCELED",
+  busy: "BUSY",
+  failed: "FAILED",
+};
+
+export async function getCallRecordings({
+  limit,
+  uniqueid,
+  status,
+  direction,
+  duration_min,
+  duration_max,
+  startDate,
+  endDate,
+} = {}) {
+  let cdrs = await queryCdrLists({ limit, startDate, endDate });
+
+  if (uniqueid) {
+    cdrs = cdrs.filter((c) => c.uniqueid === uniqueid);
+  }
+
+  if (status) {
+    const parts = status.split(",").map((s) => s.trim());
+    cdrs = cdrs.filter((c) => {
+      return parts.some((p) => {
+        if (dispositionMap[p]) return c.disposition === dispositionMap[p];
+        switch (p) {
+          case "inbound":
+            return c.dcontext !== "from-internal" && c.dcontext !== "ext-local";
+          case "outbound":
+            return c.dcontext === "from-internal";
+          case "internal":
+            return c.dcontext === "ext-local";
+          default:
+            return false;
+        }
+      });
+    });
+  }
+
+  if (direction) {
+    const dirs = direction.split(",").map((d) => d.trim());
+    cdrs = cdrs.filter((c) => {
+      return dirs.some((p) => {
+        switch (p) {
+          case "inbound":
+            return c.dcontext !== "from-internal" && c.dcontext !== "ext-local";
+          case "outbound":
+            return c.dcontext === "from-internal";
+          case "internal":
+            return c.dcontext === "ext-local";
+          default:
+            return false;
+        }
+      });
+    });
+  }
+
+  if (duration_min) {
+    const min = parseInt(duration_min);
+    cdrs = cdrs.filter((c) => parseInt(c.duration) >= min);
+  }
+
+  if (duration_max) {
+    const max = parseInt(duration_max);
+    cdrs = cdrs.filter((c) => parseInt(c.duration) <= max);
+  }
 
   return cdrs;
 }
 
-// 9. Get recording download URL (for frontend to open in new tab)
-export function getRecordingDownloadUrl(filename) {
+// 9. Login to FreePBX web UI and get session cookie
+let pbxSessionCookie = null;
+let pbxSessionExpiry = 0;
+
+async function getPbxSession() {
+  if (pbxSessionCookie && Date.now() < pbxSessionExpiry) {
+    return pbxSessionCookie;
+  }
+
   const baseUrl = FREEPBX_TOKEN_URL.replace("/api/api/token", "");
+  const resp = await axios.post(
+    `${baseUrl}/config.php`,
+    `display=login&username=${process.env.FREEPBX_USERNAME}&password=${process.env.FREEPBX_PASSWORD}&login=1`,
+    {
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Referer: `${baseUrl}/config.php?display=login`,
+      },
+    },
+  );
+
+  const setCookie = resp.headers["set-cookie"];
+  if (!setCookie) {
+    throw new Error("FreePBX login failed - no session cookie returned");
+  }
+
+  const cookie = Array.isArray(setCookie) ? setCookie.join("; ") : setCookie;
+  pbxSessionCookie = cookie;
+  pbxSessionExpiry = Date.now() + 25 * 60 * 1000;
+
+  return pbxSessionCookie;
+}
+
+// 10. Download recording audio file using PHP session auth
+export async function getRecordingFileStream(filename) {
+  const cookie = await getPbxSession();
 
   const match = filename.match(/-(\d+\.\d+)\.\w+$/);
   if (!match) {
@@ -347,7 +452,23 @@ export function getRecordingDownloadUrl(filename) {
   }
   const uid = match[1];
 
-  return `${baseUrl}/config.php?display=cdr&action=download_audio&cdr_file=${uid}`;
+  const baseUrl = FREEPBX_TOKEN_URL.replace("/api/api/token", "");
+
+  const response = await axios.get(`${baseUrl}/config.php`, {
+    params: {
+      display: "cdr",
+      action: "download_audio",
+      cdr_file: uid,
+    },
+    headers: {
+      Cookie: cookie,
+      Referer: `${baseUrl}/config.php?display=cdr`,
+      Accept: "application/octet-stream,*/*",
+    },
+    responseType: "stream",
+  });
+
+  return response;
 }
 // 10. Get all Ring Groups (groupNumber + description) for the frontend
 export async function getRingGroups() {
