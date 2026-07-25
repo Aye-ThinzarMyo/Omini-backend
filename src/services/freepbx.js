@@ -96,7 +96,7 @@ async function getAdminToken() {
     grant_type: "client_credentials",
     client_id: CLIENT_ID,
     client_secret: CLIENT_SECRET,
-    scope: "gql:core gql:framework",
+    scope: "gql",
   });
 
   const { data } = await axios.post(FREEPBX_TOKEN_URL, form.toString(), {
@@ -348,4 +348,29 @@ export function getRecordingDownloadUrl(filename) {
   const uid = match[1];
 
   return `${baseUrl}/config.php?display=cdr&action=download_audio&cdr_file=${uid}`;
+}
+// 10. Get all Ring Groups (groupNumber + description) for the frontend
+export async function getRingGroups() {
+  const query = `
+    query {
+      fetchAllRingGroups {
+        status
+        message
+        totalCount
+        ringgroups {
+          groupNumber
+          description
+        }
+      }
+    }
+  `;
+
+  const result = await gqlRequest(query);
+  const { status, message, totalCount, ringgroups } = result.fetchAllRingGroups;
+
+  if (!status) {
+    throw new Error(message || "Failed to fetch ring groups from FreePBX");
+  }
+
+  return { totalCount, ringgroups: ringgroups || [] };
 }

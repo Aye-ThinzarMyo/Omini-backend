@@ -1,4 +1,9 @@
-import { getCallsByDate, getCallRecordings, getRecordingDownloadUrl } from "../services/freepbx";
+import {
+  getCallsByDate,
+  getCallRecordings,
+  getRecordingDownloadUrl,
+  getRingGroups,
+} from "../services/freepbx";
 
 export const getCallChart = async (req, res) => {
   const { startDate, endDate } = req.query;
@@ -73,6 +78,21 @@ export const getRecordingFile = async (req, res) => {
     res.status(502).json({
       error: "Failed to get recording download URL",
       detail: err.message,
+    });
+  }
+};
+export const getRingGroupsList = async (req, res) => {
+  try {
+    const data = await getRingGroups();
+    res.json(data);
+  } catch (err) {
+    console.error(
+      "FreePBX ring groups error:",
+      err.response?.data || err.message,
+    );
+    res.status(502).json({
+      error: "Failed to fetch ring groups from FreePBX",
+      detail: err.response?.data || err.message,
     });
   }
 };
