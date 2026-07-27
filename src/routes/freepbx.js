@@ -3,12 +3,9 @@ import {
   getCallChart,
   getCallRecordingsList,
   getRecordingFile,
-<<<<<<< HEAD
   getRingGroupsList,
-=======
   getSipConfig,
   getDepartments,
->>>>>>> d5747456ffb20ba1e893ac01a4e39befa27e2a72
 } from "../controllers/freepbxController";
 
 const router = Router();

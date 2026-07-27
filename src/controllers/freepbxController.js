@@ -1,11 +1,8 @@
 import {
   getCallsByDate,
   getCallRecordings,
-<<<<<<< HEAD
   getRecordingDownloadUrl,
   getRingGroups,
-} from "../services/freepbx";
-=======
   getRecordingFileStream,
 } from "../services/freepbx";
 import { getKeycloakUser } from "../services/keycloak";
@@ -50,7 +47,6 @@ export const getSipConfig = async (req, res) => {
       .json({ error: "Failed to fetch SIP config", detail: err.message });
   }
 };
->>>>>>> d5747456ffb20ba1e893ac01a4e39befa27e2a72
 
 export const getCallChart = async (req, res) => {
   const { startDate, endDate } = req.query;
