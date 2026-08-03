@@ -2,8 +2,10 @@ import jwt from "jsonwebtoken";
 import axios from "axios";
 import crypto from "crypto";
 
+import "dotenv/config";
 const KEYCLOAK_URL = process.env.KEYCLOAK_URL;
 const REALM = process.env.KEYCLOAK_REALM;
+// console.log("url: ", KEYCLOAK_URL, "realm: ", REALM);
 
 let jwksCache = null;
 let cacheExpiry = 0;
