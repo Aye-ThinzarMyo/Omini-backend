@@ -15,7 +15,9 @@ async function getRealmKeys() {
   }
 
   const { data } = await axios.get(
-    `https://auth.agbisp.net/realms/omnichannel/protocol/openid-connect/certs`,
+    // `https://auth.agbisp.net/realms/omnichannel/protocol/openid-connect/certs`,
+    // `https://smart-auth.agbc.cloud/realms/omnichannel/protocol/openid-connect/certs`,
+    `${KEYCLOAK_URL}/realms/${REALM}/protocol/openid-connect/certs`,
   );
 
   jwksCache = data.keys;
@@ -76,7 +78,9 @@ export async function authMiddleware(req, res, next) {
 
     const decoded = jwt.verify(token, publicKey, {
       algorithms: ["RS256"],
-      issuer: `https://auth.agbisp.net/realms/omnichannel`,
+      // issuer: `https://auth.agbisp.net/realms/omnichannel`,
+      // issuer: `https://smart-auth.agbc.cloud/realms/omnichannel`,
+      issuer: `${KEYCLOAK_URL}/realms/${REALM}`,
     });
 
     // 8. Attach user
