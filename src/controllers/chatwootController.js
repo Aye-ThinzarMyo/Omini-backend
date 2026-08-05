@@ -252,7 +252,12 @@ export const getChatwootMessages = async (req, res) => {
 
 export const sendChatwootMessage = async (req, res) => {
   const { accountId, conversationId } = req.params;
-  const { content, private: isPrivate, content_type } = req.body;
+  const {
+    content,
+    private: isPrivate,
+    content_type,
+    content_attributes,
+  } = req.body;
 
   try {
     const chatwootToken = await getDecryptedChatToken(req);
@@ -269,6 +274,9 @@ export const sendChatwootMessage = async (req, res) => {
       if (content) fd.append("content", content);
       if (isPrivate !== undefined) fd.append("private", isPrivate);
       if (content_type) fd.append("content_type", content_type);
+      if (content_attributes) {
+        fd.append("content_attributes", JSON.stringify(content_attributes));
+      }
       for (const file of req.files) {
         fd.append("attachments[]", file.buffer, {
           filename: file.originalname,
@@ -292,6 +300,9 @@ export const sendChatwootMessage = async (req, res) => {
       const payload = { content };
       if (isPrivate !== undefined) payload.private = isPrivate;
       if (content_type) payload.content_type = content_type;
+      if (content_attributes) {
+        payload.content_attributes = content_attributes;
+      }
 
       messageData = await sendMessage(
         accountId,
