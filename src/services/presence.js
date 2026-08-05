@@ -80,7 +80,9 @@ export async function observerConnect(res) {
   const userIds = [...onlineUsers];
   const agents = [];
   if (userIds.length) {
-    const users = await User.findAll({ where: { id: userIds } }).catch(() => []);
+    const users = await User.findAll({ where: { id: userIds } }).catch(
+      () => [],
+    );
     const byId = new Map(users.map((u) => [u.id, u]));
     for (const uid of userIds) {
       const u = byId.get(uid);
@@ -101,4 +103,17 @@ export async function observerConnect(res) {
 
 export function getOnlineAgentIds() {
   return [...onlineUsers];
+}
+
+export async function getOnlineAgents() {
+  const userIds = [...onlineUsers];
+  if (!userIds.length) return [];
+  const users = await User.findAll({ where: { id: userIds } }).catch(() => []);
+  const byId = new Map(users.map((u) => [u.id, u]));
+  const agents = [];
+  for (const uid of userIds) {
+    const u = byId.get(uid);
+    if (u) agents.push(sanitizeUser(u));
+  }
+  return agents;
 }

@@ -1,4 +1,4 @@
-import { setupSse, agentConnect, observerConnect } from "../services/presence";
+import { setupSse, agentConnect, observerConnect, getOnlineAgents } from "../services/presence";
 
 export const agentPresenceStream = async (req, res) => {
   setupSse(res);
@@ -17,5 +17,21 @@ export const presenceObserverStream = async (req, res) => {
   } catch (err) {
     console.error("Presence observer error:", err);
     res.end();
+  }
+};
+
+export const getPresenceStatus = async (req, res) => {
+  try {
+    const agents = await getOnlineAgents();
+    res.json({
+      online: agents.map((a) => a.id),
+      agents,
+    });
+  } catch (err) {
+    console.error("Presence status error:", err);
+    res.status(502).json({
+      error: "Failed to fetch presence status",
+      detail: err.response?.data || err.message,
+    });
   }
 };
