@@ -29,6 +29,11 @@ import {
   postStartConversation,
   getUserDetail,
   updateChatwootAccount,
+  exportOutgoingMessages,
+  exportIncomingMessages,
+  exportConversations,
+  exportChannelTraffic,
+  exportContacts,
 } from "../controllers/chatwootController";
 
 const router = Router();
@@ -59,6 +64,13 @@ router.post(
 );
 router.post("/:accountId/inbox_members", addInboxMemberToAccount);
 router.get("/:accountId", getChatwootAccountDetail);
+
+// Export routes
+router.get("/:accountId/export/messages/outgoing", exportOutgoingMessages);
+router.get("/:accountId/export/messages/incoming", exportIncomingMessages);
+router.get("/:accountId/export/conversations", exportConversations);
+router.get("/:accountId/export/channels", exportChannelTraffic);
+router.get("/:accountId/export/contacts", exportContacts);
 
 // Contact routes
 router.get("/:accountId/contacts", getContactList);

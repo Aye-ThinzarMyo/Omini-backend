@@ -30,6 +30,7 @@ import {
   updateAccountPlatform,
   getAccountPlatform,
 } from "../services/chatwoot";
+import { sendCsv } from "../utils/csv";
 import { decrypt } from "../utils/encryption";
 import multer from "multer";
 import FormData from "form-data";
@@ -37,6 +38,162 @@ import FormData from "form-data";
 const upload = multer({ storage: multer.memoryStorage() });
 
 export { upload };
+
+async function getReportRows(accountId, req, metric) {
+  const { since, until, type, id } = req.query;
+  if (!since || !until) {
+    throw Object.assign(new Error("since and until are required (YYYY-MM-DD)"), {
+      statusCode: 400,
+    });
+  }
+
+  const chatwootToken = await getDecryptedChatToken(req);
+  if (!chatwootToken) {
+    throw Object.assign(new Error("No Chatwoot API key found for your account"), {
+      statusCode: 403,
+    });
+  }
+
+  const data = await getReport(accountId, chatwootToken, {
+    metric,
+    type: type || "account",
+    since: toEpochSeconds(since),
+    until: toEpochSeconds(until, true),
+    id,
+  });
+
+  const rows = [["Date", "Value"]];
+  for (const item of data || []) {
+    const date =
+      item.date ||
+      (item.timestamp
+        ? new Date(item.timestamp * 1000).toISOString().slice(0, 10)
+        : "");
+    rows.push([date, item.value]);
+  }
+  return rows;
+}
+
+async function requireChatToken(req) {
+  const chatwootToken = await getDecryptedChatToken(req);
+  if (!chatwootToken) {
+    throw Object.assign(new Error("No Chatwoot API key found for your account"), {
+      statusCode: 403,
+    });
+  }
+  return chatwootToken;
+}
+
+export const exportOutgoingMessages = async (req, res) => {
+  const { accountId } = req.params;
+  try {
+    const rows = await getReportRows(accountId, req, "outgoing_messages_count");
+    const { since, until } = req.query;
+    sendCsv(res, rows, `outgoing-messages-${since}-to-${until}.csv`);
+  } catch (err) {
+    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message });
+    res.status(502).json({
+      error: "Failed to export outgoing messages",
+      detail: err.response?.data || err.message,
+    });
+  }
+};
+
+export const exportIncomingMessages = async (req, res) => {
+  const { accountId } = req.params;
+  try {
+    const rows = await getReportRows(accountId, req, "incoming_messages_count");
+    const { since, until } = req.query;
+    sendCsv(res, rows, `incoming-messages-${since}-to-${until}.csv`);
+  } catch (err) {
+    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message });
+    res.status(502).json({
+      error: "Failed to export incoming messages",
+      detail: err.response?.data || err.message,
+    });
+  }
+};
+
+export const exportConversations = async (req, res) => {
+  const { accountId } = req.params;
+  try {
+    const rows = await getReportRows(accountId, req, "conversations_count");
+    const { since, until } = req.query;
+    sendCsv(res, rows, `conversations-${since}-to-${until}.csv`);
+  } catch (err) {
+    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message });
+    res.status(502).json({
+      error: "Failed to export conversations",
+      detail: err.response?.data || err.message,
+    });
+  }
+};
+
+export const exportChannelTraffic = async (req, res) => {
+  const { accountId } = req.params;
+  const { since, until } = req.query;
+
+  if (!since || !until) {
+    return res
+      .status(400)
+      .json({ error: "since and until are required (YYYY-MM-DD)" });
+  }
+
+  try {
+    const chatwootToken = await requireChatToken(req);
+    const data = await getDashboardData(
+      accountId,
+      chatwootToken,
+      toEpochSeconds(since),
+      toEpochSeconds(until, true),
+    );
+
+    const rows = [
+      ["Channel", "Type", "Conversations"],
+      ...(data.channels || []).map((c) => [c.name, c.channelType, c.total]),
+    ];
+    sendCsv(res, rows, `traffic-by-channel-${since}-to-${until}.csv`);
+  } catch (err) {
+    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message });
+    res.status(502).json({
+      error: "Failed to export channel traffic",
+      detail: err.response?.data || err.message,
+    });
+  }
+};
+
+export const exportContacts = async (req, res) => {
+  const { accountId } = req.params;
+  const { pageSize } = req.query;
+
+  try {
+    const chatwootToken = await requireChatToken(req);
+    const data = await listContacts(accountId, chatwootToken, {
+      page: 1,
+      pageSize: pageSize ? parseInt(pageSize) : 10000,
+    });
+
+    const contacts = data?.payload ?? [];
+    const rows = [["Id", "Name", "Email", "Phone", "Status", "Created At"]];
+    for (const c of contacts) {
+      rows.push([
+        c.id,
+        c.name,
+        c.email,
+        c.phone_number || c.additional_attributes?.phone_number || "",
+        c.status || "",
+        c.created_at || "",
+      ]);
+    }
+    sendCsv(res, rows, "contacts-export.csv");
+  } catch (err) {
+    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message });
+    res.status(502).json({
+      error: "Failed to export contacts",
+      detail: err.response?.data || err.message,
+    });
+  }
+};
 
 export const getAccountInboxes = async (req, res) => {
   const { accountId } = req.params;
@@ -87,6 +244,25 @@ async function getDecryptedChatToken(req) {
   const user = await User.findByPk(req.user.sub);
   if (!user || !user.encrypted_chat_secret) return null;
   return decrypt(user.encrypted_chat_secret);
+}
+
+// Chatwoot v2 reports expect unix timestamps (seconds). Accept either
+// YYYY-MM-DD strings or raw epoch seconds and normalize.
+function toEpochSeconds(value, endOfDay = false) {
+  if (!value) return value;
+  const m = String(value).match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) {
+    const ms = Date.UTC(
+      +m[1],
+      +m[2] - 1,
+      +m[3],
+      endOfDay ? 23 : 0,
+      endOfDay ? 59 : 0,
+      endOfDay ? 59 : 0,
+    );
+    return Math.floor(ms / 1000);
+  }
+  return /^\d+$/.test(String(value)) ? Number(value) : value;
 }
 
 export const getConversationsList = async (req, res) => {
