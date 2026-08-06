@@ -1,9 +1,10 @@
 import { User } from "../database/models";
 
-const GRACE_MS = 30 * 1000;
+const GRACE_MS = 3 * 1000;
 
 const streams = new Map(); // userId -> Map<clientId, res>
 const timers = new Map(); // userId -> offline grace timer
+const lastSeen = new Map(); // userId -> last keepalive timestamp
 const observers = new Set(); // observer SSE responses
 const onlineUsers = new Set(); // userIds currently online
 
@@ -34,10 +35,10 @@ export function setupSse(res) {
     Connection: "keep-alive",
     "X-Accel-Buffering": "no",
   });
-  res.write("retry: 10000\n\n");
+  res.write("retry: 3000\n\n");
 }
 
-export async function agentConnect(userId, res) {
+export function agentConnect(userId, res) {
   if (!streams.has(userId)) streams.set(userId, new Map());
   const clients = streams.get(userId);
   const clientId = Math.random().toString(36).slice(2);
@@ -50,15 +51,19 @@ export async function agentConnect(userId, res) {
 
   const wasOffline = !onlineUsers.has(userId);
   onlineUsers.add(userId);
+  lastSeen.set(userId, Date.now());
 
-  if (wasOffline) {
-    const user = await User.findByPk(userId).catch(() => null);
-    broadcast("presence.online", {
-      agent: sanitizeUser(user) || { id: userId },
-    });
-  }
+  // Keepalive refreshes lastSeen while the stream is open, so the
+  // safety-net sweep below never flags an active connection as stale.
+  const keepalive = setInterval(() => {
+    lastSeen.set(userId, Date.now());
+    res.write(": keepalive\n\n");
+  }, 10000);
 
+  // Attach the close handler synchronously, BEFORE any await, so a
+  // disconnect during a slow DB query cannot be missed.
   res.on("close", () => {
+    clearInterval(keepalive);
     clients.delete(clientId);
     if (clients.size === 0 && onlineUsers.has(userId)) {
       const timer = setTimeout(() => {
@@ -66,13 +71,41 @@ export async function agentConnect(userId, res) {
           onlineUsers.delete(userId);
           streams.delete(userId);
           timers.delete(userId);
+          lastSeen.delete(userId);
           broadcast("presence.offline", { agentId: userId });
         }
       }, GRACE_MS);
       timers.set(userId, timer);
     }
   });
+
+  if (wasOffline) {
+    User.findByPk(userId)
+      .then((user) => {
+        broadcast("presence.online", {
+          agent: sanitizeUser(user) || { id: userId },
+        });
+      })
+      .catch(() => {});
+  }
 }
+
+// Safety net: if the 'close' event is never fired (browser killed,
+// mobile app backgrounded, network cut without FIN), sweep marks the
+// agent offline once its keepalive goes stale past the grace period.
+setInterval(() => {
+  const now = Date.now();
+  for (const [userId, last] of lastSeen) {
+    const hasLiveStream = streams.has(userId) && streams.get(userId).size > 0;
+    if (now - last > GRACE_MS && !hasLiveStream && onlineUsers.has(userId)) {
+      onlineUsers.delete(userId);
+      streams.delete(userId);
+      timers.delete(userId);
+      lastSeen.delete(userId);
+      broadcast("presence.offline", { agentId: userId });
+    }
+  }
+}, GRACE_MS).unref();
 
 export async function observerConnect(res) {
   observers.add(res);

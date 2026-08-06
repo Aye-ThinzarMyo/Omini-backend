@@ -72,6 +72,42 @@ export const getCallChart = async (req, res) => {
   }
 };
 
+export const exportCallChart = async (req, res) => {
+  const { startDate, endDate } = req.query;
+
+  if (!startDate || !endDate) {
+    return res
+      .status(400)
+      .json({ error: "startDate and endDate are required (YYYY-MM-DD)" });
+  }
+
+  try {
+    const data = await getCallsByDate(startDate, endDate);
+
+    const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const rows = [
+      ["Date", "Calls"],
+      ...data.map(({ date, count }) => [date, count]),
+    ];
+    const csv = "\uFEFF" + rows.map((r) => r.join(",")).join("\r\n");
+
+    res.set({
+      "Content-Type": "text/csv; charset=utf-8",
+      "Content-Disposition": `attachment; filename="calls-chart-${startDate}-to-${endDate}.csv"`,
+    });
+    res.send(csv);
+  } catch (err) {
+    console.error(
+      "FreePBX call chart export error:",
+      err.response?.data || err.message,
+    );
+    res.status(502).json({
+      error: "Failed to export call data from FreePBX",
+      detail: err.response?.data || err.message,
+    });
+  }
+};
+
 export const getCallRecordingsList = async (req, res) => {
   const {
     limit,

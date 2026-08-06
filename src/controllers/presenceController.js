@@ -3,7 +3,7 @@ import { setupSse, agentConnect, observerConnect, getOnlineAgents } from "../ser
 export const agentPresenceStream = async (req, res) => {
   setupSse(res);
   try {
-    await agentConnect(req.user.sub, res);
+    agentConnect(req.user.sub, res);
   } catch (err) {
     console.error("Agent presence stream error:", err);
     res.end();
