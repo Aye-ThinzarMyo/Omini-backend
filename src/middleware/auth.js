@@ -3,6 +3,7 @@ import axios from "axios";
 import crypto from "crypto";
 
 import "dotenv/config";
+import { User } from "../database/models";
 const KEYCLOAK_URL = process.env.KEYCLOAK_URL;
 const REALM = process.env.KEYCLOAK_REALM;
 // console.log("url: ", KEYCLOAK_URL, "realm: ", REALM);

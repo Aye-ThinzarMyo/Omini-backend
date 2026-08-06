@@ -37,10 +37,6 @@ const User = sequelize.define(
       type: DataTypes.STRING(50),
       allowNull: true,
     },
-    status: {
-      type: DataTypes.STRING(20),
-      defaultValue: "Active",
-    },
     department: {
       type: DataTypes.STRING(255),
       allowNull: true,

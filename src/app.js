@@ -5,6 +5,8 @@ import usersRouter from "./routes/users";
 import chatwootRouter from "./routes/chatwoot";
 import freepbxRouter from "./routes/freepbx";
 import presenceRouter from "./routes/presence";
+import authRouter from "./routes/auth";
+import logsRouter from "./routes/logs";
 
 const app = express();
 
@@ -22,6 +24,8 @@ app.use("/api/users", authMiddleware, usersRouter);
 app.use("/api/chat", authMiddleware, chatwootRouter);
 app.use("/api/call", authMiddleware, freepbxRouter);
 app.use("/api/agents", authMiddleware, presenceRouter);
+app.use("/api/auth", authMiddleware, authRouter);
+app.use("/api/logs", authMiddleware, logsRouter);
 
 app.use((err, req, res, next) => {
   console.error("Unhandled error:", err);

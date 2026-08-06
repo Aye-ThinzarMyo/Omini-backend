@@ -1,40 +1,35 @@
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    await queryInterface.createTable('users', {
+    await queryInterface.createTable("logs", {
       id: {
-        type: Sequelize.STRING(255),
-        primaryKey: true,
-      },
-      email: {
-        type: Sequelize.STRING(255),
-        allowNull: false,
-        unique: true,
-      },
-      full_name: {
-        type: Sequelize.STRING(255),
-        allowNull: false,
-      },
-      chat_admin_user_id: {
         type: Sequelize.INTEGER,
-        allowNull: true,
+        primaryKey: true,
+        autoIncrement: true,
       },
-      encrypted_chat_secret: {
-        type: Sequelize.TEXT,
+      userId: {
+        type: Sequelize.STRING(255),
         allowNull: true,
+        references: { model: "users", key: "id" },
+        onDelete: "SET NULL",
+        onUpdate: "CASCADE",
       },
       role: {
         type: Sequelize.STRING(50),
-        defaultValue: 'Agent',
-      },
-      password: {
-        type: Sequelize.TEXT,
         allowNull: true,
       },
-      phone: {
+      status: {
+        type: Sequelize.STRING(20),
+        allowNull: true,
+      },
+      action: {
         type: Sequelize.STRING(50),
+        allowNull: false,
+      },
+      targetType: {
+        type: Sequelize.STRING(100),
         allowNull: true,
       },
-      department: {
+      targetId: {
         type: Sequelize.STRING(255),
         allowNull: true,
       },
@@ -47,9 +42,13 @@ module.exports = {
         defaultValue: Sequelize.NOW,
       },
     });
+
+    await queryInterface.addIndex("logs", ["userId"]);
+    await queryInterface.addIndex("logs", ["action"]);
+    await queryInterface.addIndex("logs", ["created_at"]);
   },
 
   down: async (queryInterface) => {
-    await queryInterface.dropTable('users');
+    await queryInterface.dropTable("logs");
   },
 };

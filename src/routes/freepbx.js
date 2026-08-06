@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { logAction } from "../services/auditLog";
 import {
   getCallChart,
   exportCallChart,
@@ -12,7 +13,15 @@ const router = Router();
 
 router.get("/sip-config", getSipConfig);
 router.get("/calls/chart", getCallChart);
-router.get("/calls/chart/export", exportCallChart);
+router.get(
+  "/calls/chart/export",
+  logAction({
+    action: "export",
+    targetType: "call_chart",
+    targetId: (req) => `${req.query.startDate || ""}_${req.query.endDate || ""}`,
+  }),
+  exportCallChart,
+);
 router.get("/calls/recordings", getCallRecordingsList);
 router.get("/recordings/file", getRecordingFile);
 router.get("/ring-groups", getRingGroupsList);

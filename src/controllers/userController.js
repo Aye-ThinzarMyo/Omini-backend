@@ -20,6 +20,7 @@ import {
   createFreepbxExtension,
   deleteFreepbxExtension,
 } from "../services/freepbx";
+import { writeLog, actorFromRequest } from "../services/auditLog";
 
 export const createUser = async (req, res) => {
   const {
@@ -39,12 +40,23 @@ export const createUser = async (req, res) => {
       .json({ error: "full_name, email, and password are required" });
   }
 
+  const actor = await actorFromRequest(req);
+  const logFail = (action, targetId) =>
+    writeLog({
+      ...actor,
+      status: "failed",
+      action,
+      targetType: "user",
+      targetId,
+    });
+
   const t = await sequelize.transaction();
 
   try {
     const existing = await User.findOne({ where: { email } });
     if (existing) {
       await t.rollback();
+      await logFail("create", null);
       return res
         .status(409)
         .json({ error: "User with this email already exists" });
@@ -61,6 +73,7 @@ export const createUser = async (req, res) => {
       });
     } catch (err) {
       await t.rollback();
+      await logFail("create", null);
       return res.status(502).json({
         error: "Failed to create user in Chatwoot",
         detail: err.response?.data || err.message,
@@ -85,6 +98,7 @@ export const createUser = async (req, res) => {
       });
     } catch (err) {
       await t.rollback();
+      await logFail("create", chatwootId);
       return res.status(502).json({
         error: "Failed to create user in Chatwoot",
         detail: err.response?.data || err.message,
@@ -98,17 +112,20 @@ export const createUser = async (req, res) => {
         const token = req.headers.authorization?.split(" ")[1];
         if (!token) {
           await t.rollback();
+          await logFail("create", chatwootId);
           return res.status(401).json({ error: "No Bearer token provided" });
         }
         const decoded = jwt.decode(token);
         const keycloakId = decoded?.sub;
         if (!keycloakId) {
           await t.rollback();
+          await logFail("create", chatwootId);
           return res.status(401).json({ error: "Invalid token: no sub claim" });
         }
         const adminUser = await User.findByPk(keycloakId);
         if (!adminUser || !adminUser.encrypted_chat_secret) {
           await t.rollback();
+          await logFail("create", chatwootId);
           return res
             .status(403)
             .json({ error: "No Chatwoot API key found for your account" });
@@ -122,6 +139,7 @@ export const createUser = async (req, res) => {
         console.log("done add inbox member");
       } catch (err) {
         await t.rollback();
+        await logFail("create", chatwootId);
         return res.status(502).json({
           error: "Failed to add agent to inbox",
           detail: err.response?.data || err.message,
@@ -145,6 +163,7 @@ export const createUser = async (req, res) => {
       }
     } catch (err) {
       await t.rollback();
+      await logFail("create", chatwootId);
       return res.status(502).json({
         error: "Failed to create user in Keycloak",
         detail: err.response?.data || err.message,
@@ -161,6 +180,7 @@ export const createUser = async (req, res) => {
       await t.rollback();
       // Best-effort cleanup of what we already created upstream
       await deleteKeycloakUser(keycloakId).catch(() => {});
+      await logFail("create", chatwootId);
       return res.status(502).json({
         error: "Failed to create extension in FreePBX",
         detail: err.response?.data || err.message,
@@ -189,6 +209,14 @@ export const createUser = async (req, res) => {
 
     await t.commit();
 
+    await writeLog({
+      ...actor,
+      status: "success",
+      action: "create",
+      targetType: "user",
+      targetId: chatwootId,
+    });
+
     const userData = user.toJSON();
     delete userData.encrypted_chat_secret;
     delete userData.password;
@@ -202,6 +230,7 @@ export const createUser = async (req, res) => {
     await t.rollback();
     await deleteFreepbxExtension(freepbxResult?.extensionId).catch(() => {});
     await deleteKeycloakUser(keycloakId).catch(() => {});
+    await logFail("create", null);
     console.error("User creation failed:", err);
     res
       .status(500)
@@ -311,12 +340,32 @@ export const updateUser = async (req, res) => {
 
     await user.update(updates);
 
+    const actor = await actorFromRequest(req);
+    await writeLog({
+      ...actor,
+      status: "success",
+      action: "update",
+      targetType: "user",
+      targetId: user.chat_admin_user_id || user.id,
+    });
+
     const userData = user.toJSON();
     delete userData.encrypted_chat_secret;
     delete userData.password;
 
     res.json({ user: userData, message: "User updated" });
   } catch (err) {
+    const actor = await actorFromRequest(req).catch(() => ({
+      userId: req.user?.sub || null,
+      role: null,
+    }));
+    await writeLog({
+      ...actor,
+      status: "failed",
+      action: "update",
+      targetType: "user",
+      targetId: id,
+    });
     console.error("User update failed:", err);
     res
       .status(500)
@@ -350,8 +399,28 @@ export const deleteUser = async (req, res) => {
     // Delete from database
     await user.destroy();
 
+    const actor = await actorFromRequest(req);
+    await writeLog({
+      ...actor,
+      status: "success",
+      action: "delete",
+      targetType: "user",
+      targetId: user.chat_admin_user_id || user.id,
+    });
+
     res.json({ message: "User deleted" });
   } catch (err) {
+    const actor = await actorFromRequest(req).catch(() => ({
+      userId: req.user?.sub || null,
+      role: null,
+    }));
+    await writeLog({
+      ...actor,
+      status: "failed",
+      action: "delete",
+      targetType: "user",
+      targetId: id,
+    });
     console.error("User delete failed:", err);
     res
       .status(500)

@@ -36,10 +36,6 @@ module.exports = {
         type: Sequelize.STRING(50),
         allowNull: true,
       },
-      status: {
-        type: Sequelize.STRING(20),
-        defaultValue: 'Active',
-      },
       department: {
         type: Sequelize.STRING(255),
         allowNull: true,
@@ -84,10 +80,6 @@ module.exports = {
       role: {
         type: Sequelize.STRING(50),
         defaultValue: 'Agent',
-      },
-      status: {
-        type: Sequelize.STRING(20),
-        defaultValue: 'Active',
       },
       chat_id: {
         type: Sequelize.INTEGER,
