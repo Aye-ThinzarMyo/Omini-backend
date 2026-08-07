@@ -14,7 +14,7 @@ const Log = sequelize.define(
       allowNull: true,
       references: { model: "users", key: "id" },
     },
-    accountId: {
+    agentId: {
       type: DataTypes.STRING(50),
       allowNull: true,
     },

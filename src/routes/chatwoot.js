@@ -62,9 +62,16 @@ router.post(
 router.post(
   "/:accountId/conversations/:conversationId/assign",
   logAction({
-    action: "assign_conversation",
+    action: (req) =>
+      req.body?.assignee_id && req.body.assignee_id !== "none"
+        ? "assign_conversation"
+        : "unassigned_conversation",
     targetType: "conversation",
     targetId: (req) => req.params.conversationId,
+    agentId: (req) =>
+      req.body?.assignee_id && req.body.assignee_id !== "none"
+        ? req.body.assignee_id
+        : null,
   }),
   assignConversationToAgent,
 );

@@ -30,7 +30,6 @@ export async function updateChatwootUserPlatform(userId, payload) {
     `/users/${userId}`,
     payload,
   );
-  console.log("atzm data;:::", data);
   return data;
 }
 
@@ -184,7 +183,6 @@ export async function addInboxMember(accountId, inboxId, userIds, token) {
     `/accounts/${accountId}/inbox_members`,
     { inbox_id: inboxId, user_ids: userIds },
   );
-  console.log("data:::", data);
   return data;
 }
 

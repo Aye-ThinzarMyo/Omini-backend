@@ -13,7 +13,7 @@ module.exports = {
         onDelete: "SET NULL",
         onUpdate: "CASCADE",
       },
-      accountId: {
+      agentId: {
         type: Sequelize.STRING(50),
         allowNull: true,
       },

@@ -565,9 +565,9 @@ export const assignConversationToAgent = async (req, res) => {
   const { accountId, conversationId } = req.params;
   const { assignee_id } = req.body;
 
-  if (!accountId || !conversationId || !assignee_id) {
+  if (!accountId || !conversationId) {
     return res.status(400).json({
-      error: "accountId, conversationId, and assignee_id are required",
+      error: "accountId and conversationId are required",
     });
   }
 

@@ -7,7 +7,7 @@ export async function writeLog({
   action,
   targetType,
   targetId,
-  accountId,
+  agentId,
 }) {
   if (!userId) return;
   try {
@@ -18,7 +18,7 @@ export async function writeLog({
       action,
       targetType: targetType || null,
       targetId: targetId != null ? String(targetId) : null,
-      accountId: accountId != null ? String(accountId) : null,
+      agentId: agentId != null ? String(agentId) : null,
     });
   } catch (err) {
     console.error("Failed to write audit log:", err.message);
@@ -37,21 +37,23 @@ export async function actorFromRequest(req) {
   }
 }
 
-export function logAction({ action, targetType, targetId }) {
+export function logAction({ action, targetType, targetId, agentId }) {
   return async (req, res, next) => {
     const originalSend = res.send.bind(res);
     res.send = (body) => {
       const status =
         res.statusCode >= 200 && res.statusCode < 400 ? "success" : "failed";
+      const act = typeof action === "function" ? action(req) : action;
       const tid = typeof targetId === "function" ? targetId(req) : targetId;
+      const aid = typeof agentId === "function" ? agentId(req) : agentId;
       actorFromRequest(req).then((actor) =>
         writeLog({
           ...actor,
           status,
-          action,
+          action: act,
           targetType,
           targetId: tid,
-          accountId: req.params?.accountId || null,
+          agentId: aid || null,
         }),
       );
       return originalSend(body);

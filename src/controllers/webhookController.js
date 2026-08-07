@@ -10,8 +10,6 @@ export const chatwootWebhook = async (req, res) => {
     return res.status(400).json({ error: "Invalid webhook payload" });
   }
 
-  console.log("Chatwoot webhook:", event.event);
-
   if (event.event === "conversation_created") {
     const conversation = event.data?.conversation;
     const contact = event.data?.contact;
