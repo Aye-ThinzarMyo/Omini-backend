@@ -13,6 +13,10 @@ module.exports = {
         onDelete: "SET NULL",
         onUpdate: "CASCADE",
       },
+      accountId: {
+        type: Sequelize.STRING(50),
+        allowNull: true,
+      },
       role: {
         type: Sequelize.STRING(50),
         allowNull: true,

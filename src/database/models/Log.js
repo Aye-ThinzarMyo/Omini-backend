@@ -14,6 +14,10 @@ const Log = sequelize.define(
       allowNull: true,
       references: { model: "users", key: "id" },
     },
+    accountId: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+    },
     role: {
       type: DataTypes.STRING(50),
       allowNull: true,

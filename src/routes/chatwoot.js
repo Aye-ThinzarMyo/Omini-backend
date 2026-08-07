@@ -53,20 +53,10 @@ router.get(
 router.post(
   "/:accountId/conversations/:conversationId/messages",
   upload.array("attachments"),
-  logAction({
-    action: "send_message",
-    targetType: "conversation",
-    targetId: (req) => req.params.conversationId,
-  }),
   sendChatwootMessage,
 );
 router.post(
   "/:accountId/conversations/:conversationId/read",
-  logAction({
-    action: "mark_conversation_read",
-    targetType: "conversation",
-    targetId: (req) => req.params.conversationId,
-  }),
   markConversationRead,
 );
 router.post(

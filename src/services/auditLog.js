@@ -7,6 +7,7 @@ export async function writeLog({
   action,
   targetType,
   targetId,
+  accountId,
 }) {
   if (!userId) return;
   try {
@@ -17,6 +18,7 @@ export async function writeLog({
       action,
       targetType: targetType || null,
       targetId: targetId != null ? String(targetId) : null,
+      accountId: accountId != null ? String(accountId) : null,
     });
   } catch (err) {
     console.error("Failed to write audit log:", err.message);
@@ -49,6 +51,7 @@ export function logAction({ action, targetType, targetId }) {
           action,
           targetType,
           targetId: tid,
+          accountId: req.params?.accountId || null,
         }),
       );
       return originalSend(body);

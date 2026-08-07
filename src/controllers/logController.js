@@ -1,5 +1,14 @@
 import { Log, User } from "../database/models";
 import { Op } from "sequelize";
+import { getContact } from "../services/chatwoot";
+import { decrypt } from "../utils/encryption";
+
+async function getChatwootToken(req) {
+  const user = await User.findByPk(req.user.sub);
+  return user?.encrypted_chat_secret
+    ? decrypt(user.encrypted_chat_secret)
+    : null;
+}
 
 export const getLogs = async (req, res) => {
   const { userId, action, targetType, status, startDate, endDate, page, pageSize } =
@@ -36,6 +45,52 @@ export const getLogs = async (req, res) => {
     });
 
     const logs = rows.map((log) => log.toJSON());
+
+    const userTargetIds = logs
+      .filter((l) => l.targetType === "user" || l.targetType === "agent")
+      .map((l) => l.targetId)
+      .filter(Boolean);
+    const userMap = {};
+    if (userTargetIds.length) {
+      const users = await User.findAll({
+        where: { chat_admin_user_id: { [Op.in]: userTargetIds } },
+        attributes: ["chat_admin_user_id", "full_name"],
+      });
+      for (const u of users) userMap[String(u.chat_admin_user_id)] = u.full_name;
+    }
+
+    const contactLogs = logs.filter(
+      (l) => l.targetType === "contact" && l.accountId && l.targetId,
+    );
+    const contactMap = {};
+    if (contactLogs.length) {
+      const token = await getChatwootToken(req);
+      if (token) {
+        await Promise.all(
+          contactLogs.map(async (l) => {
+            try {
+              const data = await getContact(l.accountId, l.targetId, token);
+              contactMap[`${l.accountId}:${l.targetId}`] =
+                data?.payload?.name ||
+                data?.payload?.contact?.name ||
+                data?.contact?.name ||
+                data?.name ||
+                null;
+            } catch {
+              contactMap[`${l.accountId}:${l.targetId}`] = null;
+            }
+          }),
+        );
+      }
+    }
+
+    for (const log of logs) {
+      if (log.targetType === "user" || log.targetType === "agent") {
+        log.targetName = userMap[String(log.targetId)] || null;
+      } else if (log.targetType === "contact") {
+        log.targetName = contactMap[`${log.accountId}:${log.targetId}`] || null;
+      }
+    }
 
     res.json({ logs, total: count, page: pageNum, pageSize: limit });
   } catch (err) {
