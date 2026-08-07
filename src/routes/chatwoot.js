@@ -1,5 +1,10 @@
 import { Router } from "express";
-import { logAction } from "../services/auditLog";
+import {
+  logAction,
+  contactNameFromBody,
+  contactFromBody,
+  fetchContactData,
+} from "../services/auditLog";
 import {
   getAccountInboxes,
   getChatwootAccountUsers,
@@ -89,27 +94,47 @@ router.get("/:accountId", getChatwootAccountDetail);
 // Export routes
 router.get(
   "/:accountId/export/messages/outgoing",
-  logAction({ action: "export", targetType: "outgoing_messages", targetId: (req) => req.params.accountId }),
+  logAction({
+    action: "export",
+    targetType: "outgoing_messages",
+    targetId: (req) => req.params.accountId,
+  }),
   exportOutgoingMessages,
 );
 router.get(
   "/:accountId/export/messages/incoming",
-  logAction({ action: "export", targetType: "incoming_messages", targetId: (req) => req.params.accountId }),
+  logAction({
+    action: "export",
+    targetType: "incoming_messages",
+    targetId: (req) => req.params.accountId,
+  }),
   exportIncomingMessages,
 );
 router.get(
   "/:accountId/export/conversations",
-  logAction({ action: "export", targetType: "conversations", targetId: (req) => req.params.accountId }),
+  logAction({
+    action: "export",
+    targetType: "conversations",
+    targetId: (req) => req.params.accountId,
+  }),
   exportConversations,
 );
 router.get(
   "/:accountId/export/channels",
-  logAction({ action: "export", targetType: "channels", targetId: (req) => req.params.accountId }),
+  logAction({
+    action: "export",
+    targetType: "channels",
+    targetId: (req) => req.params.accountId,
+  }),
   exportChannelTraffic,
 );
 router.get(
   "/:accountId/export/contacts",
-  logAction({ action: "export", targetType: "contacts", targetId: (req) => req.params.accountId }),
+  logAction({
+    action: "export",
+    targetType: "contacts",
+    targetId: (req) => req.params.accountId,
+  }),
   exportContacts,
 );
 
@@ -118,37 +143,72 @@ router.get("/:accountId/contacts", getContactList);
 router.get("/:accountId/contacts/search", getContactSearch);
 router.post(
   "/:accountId/contacts",
-  logAction({ action: "create", targetType: "contact", targetId: null }),
+  logAction({
+    action: "create",
+    targetType: "contact",
+    targetId: null,
+    description: (req, res, body) => {
+      const name = contactNameFromBody(body);
+      return name ? `${name}` : undefined;
+    },
+  }),
   postCreateContact,
 );
 router.get("/:accountId/contacts/:contactId", getContactDetail);
 router.put(
   "/:accountId/contacts/:contactId",
-  logAction({ action: "update", targetType: "contact", targetId: (req) => req.params.contactId }),
   putUpdateContact,
 );
 router.delete(
   "/:accountId/contacts/:contactId",
-  logAction({ action: "delete", targetType: "contact", targetId: (req) => req.params.contactId }),
+  logAction({
+    action: "delete",
+    targetType: "contact",
+    targetId: (req) => req.params.contactId,
+    before: (req) =>
+      fetchContactData(req.params.accountId, req.params.contactId, req),
+    description: (req, res, body) => {
+      const oldName = res.locals.logBefore?.name;
+      return oldName ? `Old contact: ${oldName}` : undefined;
+    },
+  }),
   deleteContactById,
 );
 router.put(
   "/:accountId/contacts/:contactId/block",
-  logAction({ action: "block", targetType: "contact", targetId: (req) => req.params.contactId }),
+  logAction({
+    action: "block",
+    targetType: "contact",
+    targetId: (req) => req.params.contactId,
+  }),
   putBlockContact,
 );
 router.post(
   "/:accountId/contacts/merge",
-  logAction({ action: "merge", targetType: "contact", targetId: (req) => req.body?.base_contact_id || req.body?.baseContactId }),
+  logAction({
+    action: "merge",
+    targetType: "contact",
+    targetId: (req) => req.body?.base_contact_id || req.body?.baseContactId,
+  }),
   putMergeContact,
 );
-router.get("/:accountId/contacts/:contactId/contactable_inboxes", getContactInboxes);
+router.get(
+  "/:accountId/contacts/:contactId/contactable_inboxes",
+  getContactInboxes,
+);
 router.post(
   "/:accountId/contacts/:contactId/contact_inboxes",
-  logAction({ action: "create", targetType: "contact_inbox", targetId: (req) => req.params.contactId }),
+  logAction({
+    action: "create",
+    targetType: "contact_inbox",
+    targetId: (req) => req.params.contactId,
+  }),
   postCreateContactInbox,
 );
-router.get("/:accountId/contacts/:contactId/conversations", getContactConversationList);
+router.get(
+  "/:accountId/contacts/:contactId/conversations",
+  getContactConversationList,
+);
 router.post(
   "/:accountId/conversations",
   logAction({ action: "create", targetType: "conversation", targetId: null }),
@@ -162,7 +222,11 @@ router.post(
 router.get("/users/:userId", getUserDetail);
 router.put(
   "/:accountId/account",
-  logAction({ action: "update", targetType: "account", targetId: (req) => req.params.accountId }),
+  logAction({
+    action: "update",
+    targetType: "account",
+    targetId: (req) => req.params.accountId,
+  }),
   updateChatwootAccount,
 );
 

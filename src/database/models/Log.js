@@ -38,6 +38,10 @@ const Log = sequelize.define(
       type: DataTypes.STRING(255),
       allowNull: true,
     },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
   },
   {
     tableName: "logs",

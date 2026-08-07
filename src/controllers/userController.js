@@ -215,6 +215,7 @@ export const createUser = async (req, res) => {
       action: "create",
       targetType: "user",
       targetId: chatwootId,
+      description: `New user: ${full_name}`,
     });
 
     const userData = user.toJSON();
@@ -256,6 +257,10 @@ export const updateUser = async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
+
+    const trackedFields = ["full_name", "email", "role", "department", "phone"];
+    const before = {};
+    for (const f of trackedFields) before[f] = user[f] ?? "";
 
     const updates = {};
     const chatwootPayload = {};
@@ -341,12 +346,18 @@ export const updateUser = async (req, res) => {
     await user.update(updates);
 
     const actor = await actorFromRequest(req);
+    const changes = trackedFields
+      .filter((f) => String(before[f] ?? "") !== String(user[f] ?? ""))
+      .map((f) => `${f}: ${before[f] || "(empty)"} → ${user[f] || "(empty)"}`);
     await writeLog({
       ...actor,
       status: "success",
       action: "update",
       targetType: "user",
       targetId: user.chat_admin_user_id || user.id,
+      description: changes.length
+        ? `Update user: ${changes.join(", ")}`
+        : undefined,
     });
 
     const userData = user.toJSON();
@@ -406,6 +417,7 @@ export const deleteUser = async (req, res) => {
       action: "delete",
       targetType: "user",
       targetId: user.chat_admin_user_id || user.id,
+      description: `Old user: ${user.full_name}`,
     });
 
     res.json({ message: "User deleted" });
