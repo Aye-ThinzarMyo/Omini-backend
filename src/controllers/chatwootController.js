@@ -42,16 +42,22 @@ export { upload };
 async function getReportRows(accountId, req, metric) {
   const { since, until, type, id } = req.query;
   if (!since || !until) {
-    throw Object.assign(new Error("since and until are required (YYYY-MM-DD)"), {
-      statusCode: 400,
-    });
+    throw Object.assign(
+      new Error("since and until are required (YYYY-MM-DD)"),
+      {
+        statusCode: 400,
+      },
+    );
   }
 
   const chatwootToken = await getDecryptedChatToken(req);
   if (!chatwootToken) {
-    throw Object.assign(new Error("No Chatwoot API key found for your account"), {
-      statusCode: 403,
-    });
+    throw Object.assign(
+      new Error("No Chatwoot API key found for your account"),
+      {
+        statusCode: 403,
+      },
+    );
   }
 
   const data = await getReport(accountId, chatwootToken, {
@@ -77,9 +83,12 @@ async function getReportRows(accountId, req, metric) {
 async function requireChatToken(req) {
   const chatwootToken = await getDecryptedChatToken(req);
   if (!chatwootToken) {
-    throw Object.assign(new Error("No Chatwoot API key found for your account"), {
-      statusCode: 403,
-    });
+    throw Object.assign(
+      new Error("No Chatwoot API key found for your account"),
+      {
+        statusCode: 403,
+      },
+    );
   }
   return chatwootToken;
 }
@@ -91,7 +100,8 @@ export const exportOutgoingMessages = async (req, res) => {
     const { since, until } = req.query;
     sendCsv(res, rows, `outgoing-messages-${since}-to-${until}.csv`);
   } catch (err) {
-    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message });
+    if (err.statusCode)
+      return res.status(err.statusCode).json({ error: err.message });
     res.status(502).json({
       error: "Failed to export outgoing messages",
       detail: err.response?.data || err.message,
@@ -106,7 +116,8 @@ export const exportIncomingMessages = async (req, res) => {
     const { since, until } = req.query;
     sendCsv(res, rows, `incoming-messages-${since}-to-${until}.csv`);
   } catch (err) {
-    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message });
+    if (err.statusCode)
+      return res.status(err.statusCode).json({ error: err.message });
     res.status(502).json({
       error: "Failed to export incoming messages",
       detail: err.response?.data || err.message,
@@ -121,7 +132,8 @@ export const exportConversations = async (req, res) => {
     const { since, until } = req.query;
     sendCsv(res, rows, `conversations-${since}-to-${until}.csv`);
   } catch (err) {
-    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message });
+    if (err.statusCode)
+      return res.status(err.statusCode).json({ error: err.message });
     res.status(502).json({
       error: "Failed to export conversations",
       detail: err.response?.data || err.message,
@@ -154,7 +166,8 @@ export const exportChannelTraffic = async (req, res) => {
     ];
     sendCsv(res, rows, `traffic-by-channel-${since}-to-${until}.csv`);
   } catch (err) {
-    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message });
+    if (err.statusCode)
+      return res.status(err.statusCode).json({ error: err.message });
     res.status(502).json({
       error: "Failed to export channel traffic",
       detail: err.response?.data || err.message,
@@ -187,7 +200,8 @@ export const exportContacts = async (req, res) => {
     }
     sendCsv(res, rows, "contacts-export.csv");
   } catch (err) {
-    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message });
+    if (err.statusCode)
+      return res.status(err.statusCode).json({ error: err.message });
     res.status(502).json({
       error: "Failed to export contacts",
       detail: err.response?.data || err.message,
@@ -340,7 +354,7 @@ export const getChatwootAgents = async (req, res) => {
         "role",
         "department",
         "phone",
-        "status",
+        // "status",
       ],
     });
 
