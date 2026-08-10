@@ -20,7 +20,11 @@ import {
   createFreepbxExtension,
   deleteFreepbxExtension,
 } from "../services/freepbx";
-import { writeLog, actorFromRequest, logAfterResponse } from "../services/auditLog";
+import {
+  writeLog,
+  actorFromRequest,
+  logAfterResponse,
+} from "../services/auditLog";
 
 export const createUser = async (req, res) => {
   const {
@@ -354,9 +358,16 @@ export const updateUser = async (req, res) => {
     await user.update(updates);
 
     const actor = await actorFromRequest(req);
+    // const changes = trackedFields
+    //   .filter((f) => String(before[f] ?? "") !== String(user[f] ?? ""))
+    //   .map((f) => `${f}: "change from" + ${before[f] || "(empty)"} + "to" + ${user[f] || "(empty)"}`);
+
     const changes = trackedFields
       .filter((f) => String(before[f] ?? "") !== String(user[f] ?? ""))
-      .map((f) => `${f}: ${before[f] || "(empty)"} → ${user[f] || "(empty)"}`);
+      .map(
+        (f) =>
+          `${f}: from ${before[f] || "(empty)"} to ${user[f] || "(empty)"}`,
+      );
 
     const userData = user.toJSON();
     delete userData.encrypted_chat_secret;

@@ -32,6 +32,7 @@ import {
 } from "../services/chatwoot";
 import { sendCsv } from "../utils/csv";
 import { decrypt } from "../utils/encryption";
+import { fetchContactData, contactFromBody } from "../services/auditLog";
 import multer from "multer";
 import FormData from "form-data";
 
@@ -741,12 +742,38 @@ export const putUpdateContact = async (req, res) => {
         .status(403)
         .json({ error: "No Chatwoot API key found for your account" });
     }
+
+    const trackedFields = ["name", "email", "phone_number", "blocked"];
+    const beforeContact = await fetchContactData(accountId, contactId, req);
+    const before = {};
+    if (beforeContact) {
+      for (const f of trackedFields) before[f] = beforeContact[f] ?? "";
+    }
+
     const data = await updateContact(
       accountId,
       contactId,
       chatwootToken,
       req.body,
     );
+
+    const afterContact = contactFromBody(data);
+    const after = {};
+    if (afterContact) {
+      for (const f of trackedFields) after[f] = afterContact[f] ?? "";
+    }
+
+    const changes =
+      beforeContact && afterContact
+        ? trackedFields
+            .filter((f) => String(before[f] ?? "") !== String(after[f] ?? ""))
+            .map(
+              (f) =>
+                `${f}: from ${before[f] || "(empty)"} to ${after[f] || "(empty)"}`,
+            )
+        : [];
+
+    res.locals.contactUpdateChanges = changes;
     res.json(data);
   } catch (err) {
     res.status(502).json({

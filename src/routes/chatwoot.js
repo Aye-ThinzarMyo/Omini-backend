@@ -144,6 +144,17 @@ router.post(
 router.get("/:accountId/contacts/:contactId", getContactDetail);
 router.put(
   "/:accountId/contacts/:contactId",
+  logAction({
+    action: "update",
+    targetType: "contact",
+    description: (req, res, body) => {
+      const changes = res.locals.contactUpdateChanges;
+
+      return changes?.length
+        ? `Update contact: ${changes.join(", ")}`
+        : undefined;
+    },
+  }),
   putUpdateContact,
 );
 router.delete(
