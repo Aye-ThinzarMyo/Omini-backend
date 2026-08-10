@@ -8,8 +8,6 @@ export async function writeLog({
   status,
   action,
   targetType,
-  targetId,
-  agentId,
   description,
 }) {
   if (!userId) return;
@@ -20,8 +18,6 @@ export async function writeLog({
       status: status || null,
       action,
       targetType: targetType || null,
-      targetId: targetId != null ? String(targetId) : null,
-      agentId: agentId != null ? String(agentId) : null,
       description: description || null,
     });
   } catch (err) {
@@ -75,51 +71,45 @@ export async function fetchContactName(accountId, contactId, req) {
   return contact?.name || null;
 }
 
-export function logAction({
-  action,
-  targetType,
-  targetId,
-  agentId,
-  before,
-  description,
-}) {
-  return async (req, res, next) => {
-    if (before) {
-      try {
-        res.locals.logBefore = await before(req);
-      } catch {
-        res.locals.logBefore = undefined;
-      }
-    }
+export function logAfterResponse(res, fn) {
+  res.on("finish", () => {
+    Promise.resolve()
+      .then(fn)
+      .catch((err) => console.error("Failed to write audit log:", err.message));
+  });
+}
+
+export function logAction({ action, targetType, description }) {
+  return (req, res, next) => {
     const originalSend = res.send.bind(res);
     res.send = (body) => {
-      const status =
-        res.statusCode >= 200 && res.statusCode < 400 ? "success" : "failed";
-      const act = typeof action === "function" ? action(req) : action;
-      const tid = typeof targetId === "function" ? targetId(req) : targetId;
-      const aid = typeof agentId === "function" ? agentId(req) : agentId;
-      let desc;
-      if (typeof description === "function") {
+      const result = originalSend(body);
+      res.on("finish", async () => {
         try {
-          desc = description(req, res, body);
-        } catch {
-          desc = undefined;
+          const status =
+            res.statusCode >= 200 && res.statusCode < 400
+              ? "success"
+              : "failed";
+          const act = typeof action === "function" ? action(req) : action;
+          let desc;
+          if (typeof description === "function") {
+            desc = await description(req, res, body);
+          } else {
+            desc = description;
+          }
+          const actor = await actorFromRequest(req);
+          await writeLog({
+            ...actor,
+            status,
+            action: act,
+            targetType,
+            description: desc || null,
+          });
+        } catch (err) {
+          console.error("Failed to write audit log:", err.message);
         }
-      } else {
-        desc = description;
-      }
-      actorFromRequest(req).then((actor) =>
-        writeLog({
-          ...actor,
-          status,
-          action: act,
-          targetType,
-          targetId: tid,
-          agentId: aid || null,
-          description: desc || null,
-        }),
-      );
-      return originalSend(body);
+      });
+      return result;
     };
     next();
   };

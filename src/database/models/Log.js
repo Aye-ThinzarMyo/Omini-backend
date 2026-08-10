@@ -14,10 +14,6 @@ const Log = sequelize.define(
       allowNull: true,
       references: { model: "users", key: "id" },
     },
-    agentId: {
-      type: DataTypes.STRING(50),
-      allowNull: true,
-    },
     role: {
       type: DataTypes.STRING(50),
       allowNull: true,
@@ -32,10 +28,6 @@ const Log = sequelize.define(
     },
     targetType: {
       type: DataTypes.STRING(100),
-      allowNull: true,
-    },
-    targetId: {
-      type: DataTypes.STRING(255),
       allowNull: true,
     },
     description: {

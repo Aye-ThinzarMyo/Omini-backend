@@ -18,7 +18,6 @@ router.get(
   logAction({
     action: "export",
     targetType: "call_chart",
-    targetId: (req) => `${req.query.startDate || ""}_${req.query.endDate || ""}`,
   }),
   exportCallChart,
 );

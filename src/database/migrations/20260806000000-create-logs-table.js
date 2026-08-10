@@ -13,10 +13,6 @@ module.exports = {
         onDelete: "SET NULL",
         onUpdate: "CASCADE",
       },
-      agentId: {
-        type: Sequelize.STRING(50),
-        allowNull: true,
-      },
       role: {
         type: Sequelize.STRING(50),
         allowNull: true,
@@ -31,10 +27,6 @@ module.exports = {
       },
       targetType: {
         type: Sequelize.STRING(100),
-        allowNull: true,
-      },
-      targetId: {
-        type: Sequelize.STRING(255),
         allowNull: true,
       },
       description: {

@@ -787,7 +787,7 @@ export const putBlockContact = async (req, res) => {
         .json({ error: "No Chatwoot API key found for your account" });
     }
     const data = await updateContact(accountId, contactId, chatwootToken, {
-      blocked: true,
+      blocked: req.body?.blocked !== false,
     });
     res.json(data);
   } catch (err) {

@@ -2,8 +2,7 @@ import { Router } from "express";
 import {
   logAction,
   contactNameFromBody,
-  contactFromBody,
-  fetchContactData,
+  fetchContactName,
 } from "../services/auditLog";
 import {
   getAccountInboxes,
@@ -72,11 +71,6 @@ router.post(
         ? "assign_conversation"
         : "unassigned_conversation",
     targetType: "conversation",
-    targetId: (req) => req.params.conversationId,
-    agentId: (req) =>
-      req.body?.assignee_id && req.body.assignee_id !== "none"
-        ? req.body.assignee_id
-        : null,
   }),
   assignConversationToAgent,
 );
@@ -85,7 +79,6 @@ router.post(
   logAction({
     action: "add_inbox_member",
     targetType: "inbox",
-    targetId: (req) => req.query.inbox_id || req.body?.inbox_id,
   }),
   addInboxMemberToAccount,
 );
@@ -97,7 +90,6 @@ router.get(
   logAction({
     action: "export",
     targetType: "outgoing_messages",
-    targetId: (req) => req.params.accountId,
   }),
   exportOutgoingMessages,
 );
@@ -106,7 +98,6 @@ router.get(
   logAction({
     action: "export",
     targetType: "incoming_messages",
-    targetId: (req) => req.params.accountId,
   }),
   exportIncomingMessages,
 );
@@ -115,7 +106,6 @@ router.get(
   logAction({
     action: "export",
     targetType: "conversations",
-    targetId: (req) => req.params.accountId,
   }),
   exportConversations,
 );
@@ -124,7 +114,6 @@ router.get(
   logAction({
     action: "export",
     targetType: "channels",
-    targetId: (req) => req.params.accountId,
   }),
   exportChannelTraffic,
 );
@@ -133,7 +122,6 @@ router.get(
   logAction({
     action: "export",
     targetType: "contacts",
-    targetId: (req) => req.params.accountId,
   }),
   exportContacts,
 );
@@ -146,7 +134,6 @@ router.post(
   logAction({
     action: "create",
     targetType: "contact",
-    targetId: null,
     description: (req, res, body) => {
       const name = contactNameFromBody(body);
       return name ? `${name}` : undefined;
@@ -164,22 +151,27 @@ router.delete(
   logAction({
     action: "delete",
     targetType: "contact",
-    targetId: (req) => req.params.contactId,
-    before: (req) =>
-      fetchContactData(req.params.accountId, req.params.contactId, req),
-    description: (req, res, body) => {
-      const oldName = res.locals.logBefore?.name;
-      return oldName ? `Old contact: ${oldName}` : undefined;
-    },
   }),
   deleteContactById,
 );
 router.put(
   "/:accountId/contacts/:contactId/block",
   logAction({
-    action: "block",
+    action: (req) => (req.body?.blocked === false ? "unblock" : "block"),
     targetType: "contact",
-    targetId: (req) => req.params.contactId,
+    description: async (req, res, body) => {
+      const name =
+        contactNameFromBody(body) ||
+        (await fetchContactName(
+          req.params.accountId,
+          req.params.contactId,
+          req,
+        ));
+      const isUnblock = req.body?.blocked === false;
+      return name
+        ? `${isUnblock ? "Unblocked" : "Blocked"} contact: ${name}`
+        : undefined;
+    },
   }),
   putBlockContact,
 );
@@ -188,7 +180,6 @@ router.post(
   logAction({
     action: "merge",
     targetType: "contact",
-    targetId: (req) => req.body?.base_contact_id || req.body?.baseContactId,
   }),
   putMergeContact,
 );
@@ -201,7 +192,6 @@ router.post(
   logAction({
     action: "create",
     targetType: "contact_inbox",
-    targetId: (req) => req.params.contactId,
   }),
   postCreateContactInbox,
 );
@@ -211,12 +201,12 @@ router.get(
 );
 router.post(
   "/:accountId/conversations",
-  logAction({ action: "create", targetType: "conversation", targetId: null }),
+  logAction({ action: "create", targetType: "conversation" }),
   postCreateConversation,
 );
 router.post(
   "/:accountId/conversations/start",
-  logAction({ action: "create", targetType: "conversation", targetId: null }),
+  logAction({ action: "create", targetType: "conversation" }),
   postStartConversation,
 );
 router.get("/users/:userId", getUserDetail);
@@ -225,7 +215,6 @@ router.put(
   logAction({
     action: "update",
     targetType: "account",
-    targetId: (req) => req.params.accountId,
   }),
   updateChatwootAccount,
 );
