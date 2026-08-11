@@ -743,11 +743,26 @@ export const putUpdateContact = async (req, res) => {
         .json({ error: "No Chatwoot API key found for your account" });
     }
 
-    const trackedFields = ["name", "email", "phone_number", "blocked"];
+    const trackedFields = [
+      "name",
+      "email",
+      "phone_number",
+      "company_name",
+    ];
+    const labelMap = {
+      name: "name",
+      email: "email",
+      phone_number: "phone number",
+      company_name: "company",
+    };
+    const getValue = (contact, f) =>
+      f === "company_name"
+        ? contact?.additional_attributes?.company_name ?? ""
+        : contact?.[f] ?? "";
     const beforeContact = await fetchContactData(accountId, contactId, req);
     const before = {};
     if (beforeContact) {
-      for (const f of trackedFields) before[f] = beforeContact[f] ?? "";
+      for (const f of trackedFields) before[f] = getValue(beforeContact, f);
     }
 
     const data = await updateContact(
@@ -760,7 +775,7 @@ export const putUpdateContact = async (req, res) => {
     const afterContact = contactFromBody(data);
     const after = {};
     if (afterContact) {
-      for (const f of trackedFields) after[f] = afterContact[f] ?? "";
+      for (const f of trackedFields) after[f] = getValue(afterContact, f);
     }
 
     const changes =
@@ -769,11 +784,13 @@ export const putUpdateContact = async (req, res) => {
             .filter((f) => String(before[f] ?? "") !== String(after[f] ?? ""))
             .map(
               (f) =>
-                `${f}: from ${before[f] || "(empty)"} to ${after[f] || "(empty)"}`,
+                `${labelMap[f]} from ${before[f] || "(empty)"} to ${after[f] || "(empty)"}`,
             )
         : [];
 
-    res.locals.contactUpdateChanges = changes;
+    res.locals.contactUpdateDescription = changes.length
+      ? `${changes.join(", ")} at ${afterContact?.name || "(unknown)"}`
+      : undefined;
     res.json(data);
   } catch (err) {
     res.status(502).json({

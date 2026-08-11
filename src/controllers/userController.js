@@ -270,7 +270,14 @@ export const updateUser = async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    const trackedFields = ["full_name", "email", "role", "department", "phone"];
+    const trackedFields = ["full_name", "email", "phone", "department", "role"];
+    const labelMap = {
+      full_name: "name",
+      email: "email",
+      phone: "phone number",
+      department: "department",
+      role: "role",
+    };
     const before = {};
     for (const f of trackedFields) before[f] = user[f] ?? "";
 
@@ -366,7 +373,7 @@ export const updateUser = async (req, res) => {
       .filter((f) => String(before[f] ?? "") !== String(user[f] ?? ""))
       .map(
         (f) =>
-          `${f}: from ${before[f] || "(empty)"} to ${user[f] || "(empty)"}`,
+          `${labelMap[f]} from ${before[f] || "(empty)"} to ${user[f] || "(empty)"}`,
       );
 
     const userData = user.toJSON();
@@ -381,7 +388,7 @@ export const updateUser = async (req, res) => {
         action: "update",
         targetType: "user",
         description: changes.length
-          ? `Update user: ${changes.join(", ")}`
+          ? `${changes.join(", ")} at ${user.full_name}`
           : undefined,
       }),
     );

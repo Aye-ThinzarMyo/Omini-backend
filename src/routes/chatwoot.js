@@ -147,13 +147,7 @@ router.put(
   logAction({
     action: "update",
     targetType: "contact",
-    description: (req, res, body) => {
-      const changes = res.locals.contactUpdateChanges;
-
-      return changes?.length
-        ? `Update contact: ${changes.join(", ")}`
-        : undefined;
-    },
+    description: (req, res, body) => res.locals.contactUpdateDescription,
   }),
   putUpdateContact,
 );
