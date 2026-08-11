@@ -2,6 +2,8 @@ import { User } from "../database/models";
 import { Op } from "sequelize";
 import {
   getInboxes,
+  getProfile,
+  updateProfile,
   getAccountUsers,
   getConversations,
   getConversation,
@@ -31,7 +33,8 @@ import {
   getAccountPlatform,
 } from "../services/chatwoot";
 import { sendCsv } from "../utils/csv";
-import { decrypt } from "../utils/encryption";
+import { decrypt, encrypt } from "../utils/encryption";
+import { resetKeycloakPassword } from "../services/keycloak";
 import { fetchContactData, contactFromBody } from "../services/auditLog";
 import multer from "multer";
 import FormData from "form-data";
@@ -260,6 +263,52 @@ async function getDecryptedChatToken(req) {
   if (!user || !user.encrypted_chat_secret) return null;
   return decrypt(user.encrypted_chat_secret);
 }
+
+export const getChatwootProfile = async (req, res) => {
+  try {
+    const chatwootToken = await getDecryptedChatToken(req);
+    if (!chatwootToken) {
+      return res
+        .status(403)
+        .json({ error: "No Chatwoot API key found for your account" });
+    }
+    const data = await getProfile(chatwootToken);
+    res.json(data);
+  } catch (err) {
+    res.status(502).json({
+      error: "Failed to fetch Chatwoot profile",
+      detail: err.response?.data || err.message,
+    });
+  }
+};
+
+export const updateChatwootProfile = async (req, res) => {
+  try {
+    const chatwootToken = await getDecryptedChatToken(req);
+    if (!chatwootToken) {
+      return res
+        .status(403)
+        .json({ error: "No Chatwoot API key found for your account" });
+    }
+    const data = await updateProfile(chatwootToken, req.body);
+
+    const profile = req.body?.profile || {};
+    if (profile.password) {
+      const user = await User.findByPk(req.user.sub);
+      if (user) {
+        await resetKeycloakPassword(user.id, profile.password);
+        await user.update({ password: encrypt(profile.password) });
+      }
+    }
+
+    res.json(data);
+  } catch (err) {
+    res.status(502).json({
+      error: "Failed to update Chatwoot profile",
+      detail: err.response?.data || err.message,
+    });
+  }
+};
 
 // Chatwoot v2 reports expect unix timestamps (seconds). Accept either
 // YYYY-MM-DD strings or raw epoch seconds and normalize.

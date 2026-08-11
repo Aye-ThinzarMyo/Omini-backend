@@ -7,6 +7,8 @@ import {
 } from "../services/auditLog";
 import {
   getAccountInboxes,
+  getChatwootProfile,
+  updateChatwootProfile,
   getChatwootAccountUsers,
   getConversationsList,
   getConversationDetail,
@@ -91,6 +93,8 @@ router.post(
   }),
   addInboxMemberToAccount,
 );
+router.get("/profile", getChatwootProfile);
+router.put("/profile", updateChatwootProfile);
 router.get("/:accountId", getChatwootAccountDetail);
 
 // Export routes

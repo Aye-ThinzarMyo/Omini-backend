@@ -74,6 +74,8 @@ export const createUser = async (req, res) => {
         name: full_name,
         email,
         password,
+        phone,
+        department,
       });
     } catch (err) {
       await t.rollback();
@@ -87,8 +89,6 @@ export const createUser = async (req, res) => {
 
     const { chatwootId, apiKey } = chatwootResult;
 
-    console.log("chat woot id:::", chatwootId);
-    console.log("api key:::", apiKey);
     const normalizedRole =
       role?.toLowerCase() === "admin" ||
       role?.toLowerCase() === "administrator" ||

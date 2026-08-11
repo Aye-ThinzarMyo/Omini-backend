@@ -12,14 +12,24 @@ function chatwootApi(token, prefix = "", version = "v1") {
   });
 }
 
-export async function createChatwootUser({ name, email, password }) {
+export async function createChatwootUser({
+  name,
+  email,
+  password,
+  phone,
+  department,
+}) {
+  const custom_attributes = {};
+  if (phone) custom_attributes.phone_number = phone;
+  if (department) custom_attributes.department = department;
+
   const { data } = await chatwootApi(PLATFORM_TOKEN, "/platform").post(
     "/users",
     {
       name,
       email,
       password,
-      custom_attributes: {},
+      custom_attributes,
     },
   );
   return { chatwootId: data.id, apiKey: data.access_token };
@@ -109,6 +119,16 @@ export async function updateAgent(accountId, agentId, token, payload) {
     `/accounts/${accountId}/agents/${agentId}`,
     payload,
   );
+  return data;
+}
+
+export async function getProfile(token) {
+  const { data } = await chatwootApi(token).get("/profile");
+  return data;
+}
+
+export async function updateProfile(token, payload) {
+  const { data } = await chatwootApi(token).put("/profile", payload);
   return data;
 }
 
