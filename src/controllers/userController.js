@@ -283,6 +283,7 @@ export const updateUser = async (req, res) => {
 
     const updates = {};
     const chatwootPayload = {};
+    let passwordUpdated = false;
 
     if (full_name) {
       chatwootPayload.name = full_name;
@@ -355,6 +356,7 @@ export const updateUser = async (req, res) => {
     if (password) {
       await resetKeycloakPassword(user.id, password);
       updates.password = encrypt(password);
+      passwordUpdated = true;
     }
 
     // Update encrypted_chat_secret if new api key returned
@@ -375,6 +377,7 @@ export const updateUser = async (req, res) => {
         (f) =>
           `${labelMap[f]} from ${before[f] || "(empty)"} to ${user[f] || "(empty)"}`,
       );
+    if (passwordUpdated) changes.push("password changed");
 
     const userData = user.toJSON();
     delete userData.encrypted_chat_secret;
