@@ -3,6 +3,7 @@ import {
   logAction,
   contactNameFromBody,
   fetchContactName,
+  assigneeNameFromId,
 } from "../services/auditLog";
 import {
   getAccountInboxes,
@@ -71,6 +72,14 @@ router.post(
         ? "assign_conversation"
         : "unassigned_conversation",
     targetType: "conversation",
+    description: async (req, res, body) => {
+      const assigneeId = req.body?.assignee_id;
+      if (assigneeId && assigneeId !== "none") {
+        const name = await assigneeNameFromId(assigneeId);
+        return name ? `assigned to ${name}` : `assigned to agent ${assigneeId}`;
+      }
+      return "unassigned";
+    },
   }),
   assignConversationToAgent,
 );

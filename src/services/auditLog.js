@@ -71,6 +71,18 @@ export async function fetchContactName(accountId, contactId, req) {
   return contact?.name || null;
 }
 
+export async function assigneeNameFromId(assigneeId) {
+  if (!assigneeId || assigneeId === "none") return null;
+  try {
+    const agent = await User.findOne({
+      where: { chat_admin_user_id: String(assigneeId) },
+    });
+    return agent?.full_name || null;
+  } catch {
+    return null;
+  }
+}
+
 export function logAfterResponse(res, fn) {
   res.on("finish", () => {
     Promise.resolve()
