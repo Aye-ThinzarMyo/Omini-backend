@@ -34,7 +34,10 @@ import {
 } from "../services/chatwoot";
 import { sendCsv } from "../utils/csv";
 import { decrypt, encrypt } from "../utils/encryption";
-import { resetKeycloakPassword } from "../services/keycloak";
+import {
+  resetKeycloakPassword,
+  updateKeycloakUser,
+} from "../services/keycloak";
 import { fetchContactData, contactFromBody } from "../services/auditLog";
 import multer from "multer";
 import FormData from "form-data";
@@ -290,15 +293,48 @@ export const updateChatwootProfile = async (req, res) => {
         .status(403)
         .json({ error: "No Chatwoot API key found for your account" });
     }
-    const data = await updateProfile(chatwootToken, req.body);
 
     const profile = req.body?.profile || {};
-    if (profile.password) {
-      const user = await User.findByPk(req.user.sub);
-      if (user) {
-        await resetKeycloakPassword(user.id, profile.password);
-        await user.update({ password: encrypt(profile.password) });
+
+    // Department doesn't exist in Chatwoot - strip it before calling Chatwoot
+    const { department, ...chatwootFields } = profile;
+    const data = await updateProfile(chatwootToken, {
+      profile: chatwootFields,
+    });
+
+    const user = await User.findByPk(req.user.sub);
+    if (user) {
+      const updates = {};
+      const keycloakPayload = {};
+
+      if (profile.name) {
+        updates.full_name = profile.name;
+        keycloakPayload.fullname = profile.name;
       }
+      if (profile.email) {
+        updates.email = profile.email;
+        keycloakPayload.email = profile.email;
+      }
+      if (profile.phone_number) {
+        updates.phone = profile.phone_number;
+      }
+      if (profile.department) {
+        updates.department = profile.department;
+        keycloakPayload.department = profile.department;
+      }
+      if (profile.password) {
+        await resetKeycloakPassword(user.id, profile.password);
+        updates.password = encrypt(profile.password);
+      }
+
+      if (Object.keys(keycloakPayload).length > 0) {
+        await updateKeycloakUser(user.id, keycloakPayload);
+      }
+      if (Object.keys(updates).length > 0) {
+        await user.update(updates);
+      }
+
+      return res.json({ ...data, department: user.department || null });
     }
 
     res.json(data);
@@ -792,12 +828,7 @@ export const putUpdateContact = async (req, res) => {
         .json({ error: "No Chatwoot API key found for your account" });
     }
 
-    const trackedFields = [
-      "name",
-      "email",
-      "phone_number",
-      "company_name",
-    ];
+    const trackedFields = ["name", "email", "phone_number", "company_name"];
     const labelMap = {
       name: "name",
       email: "email",
@@ -806,8 +837,8 @@ export const putUpdateContact = async (req, res) => {
     };
     const getValue = (contact, f) =>
       f === "company_name"
-        ? contact?.additional_attributes?.company_name ?? ""
-        : contact?.[f] ?? "";
+        ? (contact?.additional_attributes?.company_name ?? "")
+        : (contact?.[f] ?? "");
     const beforeContact = await fetchContactData(accountId, contactId, req);
     const before = {};
     if (beforeContact) {

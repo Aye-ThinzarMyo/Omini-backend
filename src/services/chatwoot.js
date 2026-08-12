@@ -17,11 +17,11 @@ export async function createChatwootUser({
   email,
   password,
   phone,
-  department,
+  // department,
 }) {
   const custom_attributes = {};
   if (phone) custom_attributes.phone_number = phone;
-  if (department) custom_attributes.department = department;
+  // if (department) custom_attributes.department = department;
 
   const { data } = await chatwootApi(PLATFORM_TOKEN, "/platform").post(
     "/users",
@@ -185,6 +185,19 @@ export async function sendMessage(
   const { data } = await api.post(
     `/accounts/${accountId}/conversations/${conversationId}/messages`,
     payload,
+  );
+  return data;
+}
+
+export async function toggleConversationStatus(
+  accountId,
+  conversationId,
+  token,
+  status,
+) {
+  const { data } = await chatwootApi(token).post(
+    `/accounts/${accountId}/conversations/${conversationId}/toggle_status`,
+    { status },
   );
   return data;
 }

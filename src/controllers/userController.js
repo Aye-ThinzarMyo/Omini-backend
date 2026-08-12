@@ -75,7 +75,7 @@ export const createUser = async (req, res) => {
         email,
         password,
         phone,
-        department,
+        // department,
       });
     } catch (err) {
       await t.rollback();

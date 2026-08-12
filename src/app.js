@@ -7,6 +7,7 @@ import freepbxRouter from "./routes/freepbx";
 import presenceRouter from "./routes/presence";
 
 import logsRouter from "./routes/logs";
+import webhookRouter from "./routes/webhook";
 
 const app = express();
 
@@ -25,6 +26,7 @@ app.use("/api/chat", authMiddleware, chatwootRouter);
 app.use("/api/call", authMiddleware, freepbxRouter);
 app.use("/api/agents", authMiddleware, presenceRouter);
 app.use("/api/logs", authMiddleware, logsRouter);
+app.use("/api/webhooks", webhookRouter);
 
 app.use((err, req, res, next) => {
   console.error("Unhandled error:", err);

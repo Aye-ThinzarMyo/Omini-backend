@@ -104,6 +104,7 @@
 //---For add role and department to keycloak user
 
 import axios from "axios";
+import { User } from "../database/models";
 
 const KEYCLOAK_URL = process.env.KEYCLOAK_URL;
 const REALM = process.env.KEYCLOAK_REALM;
@@ -209,20 +210,38 @@ export async function updateKeycloakUser(
   keycloakUserId,
   { email, name, department, role, fullname },
 ) {
+  const user = await User.findByPk(keycloakUserId);
+  if (!user) throw new Error("Keycloak user not found in database");
+
+  // Keycloak requires the full set of user attributes on every update,
+  // so merge incoming changes with the current database values.
+  const next = {
+    email: email || user.email,
+    department: department || user.department || "",
+    role: role || user.role || "",
+    fullname: fullname || user.full_name || "",
+  };
+
+  const changed =
+    next.email !== user.email ||
+    next.department !== (user.department || "") ||
+    next.role !== (user.role || "") ||
+    next.fullname !== (user.full_name || "");
+
+  if (!changed) return;
+
   const token = await getAdminToken();
   const api = adminApi(token);
 
-  const payload = {};
-  // if (name) {
-  //   payload.username = name;
-  // }
-  if (email) payload.email = email;
-  if (department || role) {
-    payload.attributes = {};
-    if (department) payload.attributes.department = department;
-    if (role) payload.attributes.role = role;
-    if (fullname) payload.attributes.fullname = fullname;
-  }
+  const payload = {
+    email: next.email,
+    attributes: {
+      department: next.department,
+      role: next.role,
+      fullname: next.fullname,
+    },
+  };
+  if (name) payload.username = name;
 
   await api.put(`/users/${keycloakUserId}`, payload);
 }
