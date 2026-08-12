@@ -276,7 +276,8 @@ export const getChatwootProfile = async (req, res) => {
         .json({ error: "No Chatwoot API key found for your account" });
     }
     const data = await getProfile(chatwootToken);
-    res.json(data);
+    const user = await User.findByPk(req.user.sub);
+    res.json({ ...data, department: user?.department || null });
   } catch (err) {
     res.status(502).json({
       error: "Failed to fetch Chatwoot profile",
