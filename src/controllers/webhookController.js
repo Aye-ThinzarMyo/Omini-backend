@@ -1,89 +1,53 @@
-import "dotenv/config";
-import { Op } from "sequelize";
-import { decrypt } from "../utils/encryption";
 import { User } from "../database/models";
-import { createContact } from "../services/chatwoot";
-import {
-  generateBotReply,
-  sendBotReply,
-  handoffToHuman,
-  THRESHOLD,
-} from "../services/bot";
-
-const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
+import { notify } from "../services/notifications";
 
 export const chatwootWebhook = async (req, res) => {
-  const event = req.body;
-
-  if (!event || !event.event) {
-    return res.status(400).json({ error: "Invalid webhook payload" });
-  }
-
-  if (WEBHOOK_SECRET) {
-    const token =
-      req.query.webhook_token ||
-      req.query.token ||
-      req.headers["x-webhook-token"];
-    if (token !== WEBHOOK_SECRET) {
-      return res.status(401).json({ error: "Invalid webhook token" });
-    }
-  }
-
   try {
-    if (event.event === "conversation_created") {
-      await syncContactFromConversation(event);
+    const body = req.body || {};
+    const data = body.data || body;
+
+    if (body.event === "message_created") {
+      const message = data.message || null;
+      const senderType =
+        message?.sender_type ||
+        data.sender_type ||
+        (data.message_type === "incoming" ? "Contact" : null);
+
+      // Only notify for customer messages (never for agent or bot messages)
+      if (senderType === "Contact") {
+        const conversation = data.conversation || {};
+        const assignee =
+          conversation?.assignee || conversation?.meta?.assignee || null;
+        const assigneeId = assignee?.id;
+
+        if (assigneeId) {
+          const agent = await User.findOne({
+            where: { chat_admin_user_id: assigneeId },
+          });
+          if (agent) {
+            const contactName =
+              message?.sender?.name ||
+              data.sender?.name ||
+              data.contact?.name ||
+              "Customer";
+            const text = message?.content || data.content || "";
+
+            notify(agent.id, {
+              type: "chat.message",
+              title: `New message from ${contactName}`,
+              message: text || "You have a new message",
+              data: {
+                conversationId: conversation.id,
+                accountId: data.account?.id,
+              },
+            });
+          }
+        }
+      }
     }
 
-    if (event.event === "message_created") {
-      await handleMessageCreated(event);
-    }
+    res.status(200).json({ received: true });
   } catch (err) {
-    console.error("Webhook processing error:", err.message);
+    res.status(200).json({ received: true });
   }
-
-  res.json({ received: true });
 };
-
-async function syncContactFromConversation(event) {
-  const conversation = event.data?.conversation;
-  const contact = event.data?.contact;
-  const accountId = event.data?.account?.id;
-
-  if (accountId && contact && conversation?.inbox_id) {
-    const adminUser = await User.findOne({
-      where: { chat_admin_user_id: { [Op.ne]: null } },
-    });
-
-    if (adminUser?.encrypted_chat_secret) {
-      const token = decrypt(adminUser.encrypted_chat_secret);
-      await createContact(accountId, token, {
-        email: contact.email,
-        phone_number: contact.phone_number,
-        name: contact.name,
-        inbox_id: conversation.inbox_id,
-      });
-    }
-  }
-}
-
-async function handleMessageCreated(event) {
-  const message = event.data?.message;
-  const conversation = event.data?.conversation;
-  const accountId = event.data?.account?.id;
-
-  if (!message || !conversation || !accountId) return;
-  if (message.sender_type !== "Contact") return;
-  if (!message.content) return;
-
-  const text = message.content.trim();
-
-  const { reply, confidence } = await generateBotReply(text);
-
-  if (reply && confidence >= THRESHOLD) {
-    await sendBotReply(accountId, conversation.id, reply);
-    console.log(`[BOT] replied to conversation ${conversation.id}`);
-  } else {
-    await handoffToHuman(accountId, conversation.id);
-    console.log(`[BOT] handed off conversation ${conversation.id} to human`);
-  }
-}

@@ -9,7 +9,7 @@ import { getKeycloakUser } from "../services/keycloak";
 import { User } from "../database/models";
 import { decrypt } from "../utils/encryption";
 
-const SIP_DOMAIN = process.env.FREEPBX_SIP_DOMAIN || "172.19.1.216";
+const SIP_DOMAIN = process.env.FREEPBX_SIP_DOMAIN || "172.18.26.20";
 const SIP_WS_SERVERS =
   process.env.FREEPBX_SIP_WS_SERVERS || "wss://freepbx-uat.agbisp.net:8089/ws";
 
