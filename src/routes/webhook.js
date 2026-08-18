@@ -1,8 +1,8 @@
 import { Router } from "express";
-import { chatwootWebhook } from "../controllers/webhookController";
+import { chatbot } from "../controllers/webhookController";
 
 const router = Router();
 
-router.post("/chatwoot", chatwootWebhook);
+router.post("/chatbot", chatbot);
 
 export default router;

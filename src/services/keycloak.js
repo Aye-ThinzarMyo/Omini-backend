@@ -105,7 +105,7 @@
 
 import axios from "axios";
 import { User } from "../database/models";
-
+import "dotenv/config";
 const KEYCLOAK_URL = process.env.KEYCLOAK_URL;
 const REALM = process.env.KEYCLOAK_REALM;
 const CLIENT_ID = process.env.KEYCLOAK_CLIENT_ID;
