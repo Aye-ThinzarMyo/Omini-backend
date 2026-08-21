@@ -470,33 +470,62 @@ export async function getRecordingFileStream(filename) {
 
   return response;
 }
-// 11. Block/unblock a phone number via FreePBX Blacklist
-export async function blockPhoneNumber(number, description = "Blocked via Chatwoot") {
-  const result = await gqlRequest(
-    `mutation AddBlacklist($input: addBlacklistInput!) {
-      addBlacklist(input: $input) { status message }
-    }`,
-    { input: { number, description } },
+// 11. Block a phone number via FreePBX Blacklist
+export async function blockPhoneNumber(phoneNumber) {
+  const token = await getAdminToken();
+
+  const { data } = await axios.post(
+    FREEPBX_GQL_URL,
+    {
+      query: `mutation {
+        addBlacklist(input: { number: "${phoneNumber}", description: "Blocked via OmniChannel" }) {
+          clientMutationId
+          blacklist { number description }
+        }
+      }`,
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    },
   );
-  if (!result.addBlacklist.status) {
-    throw new Error(result.addBlacklist.message || "addBlacklist failed");
+
+  if (data.errors) {
+    throw new Error(data.errors.map((e) => e.message).join("; "));
   }
-  await gqlRequest(`mutation { doreload(input: {}) { status message } }`);
-  return result.addBlacklist;
+
+  return data.data.addBlacklist.blacklist;
 }
 
-export async function unblockPhoneNumber(number) {
-  const result = await gqlRequest(
-    `mutation RemoveBlacklist($input: removeBlacklistInput!) {
-      removeBlacklist(input: $input) { status message }
-    }`,
-    { input: { number } },
+// 12. Unblock a phone number via FreePBX Blacklist
+export async function unblockPhoneNumber(phoneNumber) {
+  const token = await getAdminToken();
+
+  const { data } = await axios.post(
+    FREEPBX_GQL_URL,
+    {
+      query: `mutation {
+        removeBlacklist(input: { number: "${phoneNumber}" }) {
+          clientMutationId
+          deletedId
+        }
+      }`,
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    },
   );
-  if (!result.removeBlacklist.status) {
-    throw new Error(result.removeBlacklist.message || "removeBlacklist failed");
+
+  if (data.errors) {
+    throw new Error(data.errors.map((e) => e.message).join("; "));
   }
-  await gqlRequest(`mutation { doreload(input: {}) { status message } }`);
-  return result.removeBlacklist;
+
+  return data.data.removeBlacklist;
 }
 
 // 10. Get all Ring Groups (groupNumber + description) for the frontend

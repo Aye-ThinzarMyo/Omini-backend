@@ -41,10 +41,7 @@ import {
   updateKeycloakUser,
 } from "../services/keycloak";
 import { fetchContactData, contactFromBody } from "../services/auditLog";
-import {
-  blockPhoneNumber,
-  unblockPhoneNumber,
-} from "../services/freepbx";
+import { blockPhoneNumber, unblockPhoneNumber } from "../services/freepbx";
 import multer from "multer";
 import FormData from "form-data";
 
@@ -978,7 +975,11 @@ export const putBlockContact = async (req, res) => {
     let phone = req.body?.phone_number || null;
     if (!phone) {
       try {
-        const contactDetail = await getContact(accountId, contactId, chatwootToken);
+        const contactDetail = await getContact(
+          accountId,
+          contactId,
+          chatwootToken,
+        );
         const c = contactDetail?.payload?.contact || contactDetail;
         phone = c?.phone_number || c?.phone || null;
       } catch (e) {
@@ -990,9 +991,14 @@ export const putBlockContact = async (req, res) => {
 
     // 3. Block/unblock phone in FreePBX
     if (phone) {
+      console.log("phone:::", phone);
+      console.log("is blocked::", isBlocked);
       try {
         if (isBlocked) {
-          await blockPhoneNumber(phone, `Blocked via Chatwoot contact ${contactId}`);
+          await blockPhoneNumber(
+            phone,
+            `Blocked via Chatwoot contact ${contactId}`,
+          );
         } else {
           await unblockPhoneNumber(phone);
         }
