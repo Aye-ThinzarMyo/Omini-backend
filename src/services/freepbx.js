@@ -470,6 +470,35 @@ export async function getRecordingFileStream(filename) {
 
   return response;
 }
+// 11. Block/unblock a phone number via FreePBX Blacklist
+export async function blockPhoneNumber(number, description = "Blocked via Chatwoot") {
+  const result = await gqlRequest(
+    `mutation AddBlacklist($input: addBlacklistInput!) {
+      addBlacklist(input: $input) { status message }
+    }`,
+    { input: { number, description } },
+  );
+  if (!result.addBlacklist.status) {
+    throw new Error(result.addBlacklist.message || "addBlacklist failed");
+  }
+  await gqlRequest(`mutation { doreload(input: {}) { status message } }`);
+  return result.addBlacklist;
+}
+
+export async function unblockPhoneNumber(number) {
+  const result = await gqlRequest(
+    `mutation RemoveBlacklist($input: removeBlacklistInput!) {
+      removeBlacklist(input: $input) { status message }
+    }`,
+    { input: { number } },
+  );
+  if (!result.removeBlacklist.status) {
+    throw new Error(result.removeBlacklist.message || "removeBlacklist failed");
+  }
+  await gqlRequest(`mutation { doreload(input: {}) { status message } }`);
+  return result.removeBlacklist;
+}
+
 // 10. Get all Ring Groups (groupNumber + description) for the frontend
 export async function getRingGroups() {
   const query = `

@@ -31,6 +31,8 @@ import {
   getUserPlatform,
   updateAccountPlatform,
   getAccountPlatform,
+  getConversationAttachments,
+  getConversationParticipants,
 } from "../services/chatwoot";
 import { sendCsv } from "../utils/csv";
 import { decrypt, encrypt } from "../utils/encryption";
@@ -39,6 +41,10 @@ import {
   updateKeycloakUser,
 } from "../services/keycloak";
 import { fetchContactData, contactFromBody } from "../services/auditLog";
+import {
+  blockPhoneNumber,
+  unblockPhoneNumber,
+} from "../services/freepbx";
 import multer from "multer";
 import FormData from "form-data";
 
@@ -527,6 +533,56 @@ export const getChatwootMessages = async (req, res) => {
   }
 };
 
+export const getChatwootAttachments = async (req, res) => {
+  const { accountId, conversationId } = req.params;
+
+  try {
+    const chatwootToken = await getDecryptedChatToken(req);
+    if (!chatwootToken) {
+      return res
+        .status(403)
+        .json({ error: "No Chatwoot API key found for your account" });
+    }
+
+    const data = await getConversationAttachments(
+      accountId,
+      conversationId,
+      chatwootToken,
+    );
+    res.json(data);
+  } catch (err) {
+    res.status(502).json({
+      error: "Failed to fetch attachments from Chatwoot",
+      detail: err.response?.data || err.message,
+    });
+  }
+};
+
+export const getChatwootParticipants = async (req, res) => {
+  const { accountId, conversationId } = req.params;
+
+  try {
+    const chatwootToken = await getDecryptedChatToken(req);
+    if (!chatwootToken) {
+      return res
+        .status(403)
+        .json({ error: "No Chatwoot API key found for your account" });
+    }
+
+    const data = await getConversationParticipants(
+      accountId,
+      conversationId,
+      chatwootToken,
+    );
+    res.json(data);
+  } catch (err) {
+    res.status(502).json({
+      error: "Failed to fetch participants from Chatwoot",
+      detail: err.response?.data || err.message,
+    });
+  }
+};
+
 export const sendChatwootMessage = async (req, res) => {
   const { accountId, conversationId } = req.params;
   const {
@@ -903,6 +959,7 @@ export const deleteContactById = async (req, res) => {
 
 export const putBlockContact = async (req, res) => {
   const { accountId, contactId } = req.params;
+  const isBlocked = req.body?.blocked !== false;
 
   try {
     const chatwootToken = await getDecryptedChatToken(req);
@@ -911,10 +968,40 @@ export const putBlockContact = async (req, res) => {
         .status(403)
         .json({ error: "No Chatwoot API key found for your account" });
     }
+
+    // 1. Block/unblock in Chatwoot
     const data = await updateContact(accountId, contactId, chatwootToken, {
-      blocked: req.body?.blocked !== false,
+      blocked: isBlocked,
     });
-    res.json(data);
+
+    // 2. Get the phone number from the contact
+    let phone = req.body?.phone_number || null;
+    if (!phone) {
+      try {
+        const contactDetail = await getContact(accountId, contactId, chatwootToken);
+        const c = contactDetail?.payload?.contact || contactDetail;
+        phone = c?.phone_number || c?.phone || null;
+      } catch (e) {
+        // fallback: try from the update response
+        const c = data?.payload?.contact || data;
+        phone = c?.phone_number || c?.phone || null;
+      }
+    }
+
+    // 3. Block/unblock phone in FreePBX
+    if (phone) {
+      try {
+        if (isBlocked) {
+          await blockPhoneNumber(phone, `Blocked via Chatwoot contact ${contactId}`);
+        } else {
+          await unblockPhoneNumber(phone);
+        }
+      } catch (pbxErr) {
+        console.error("FreePBX block/unblock failed:", pbxErr.message);
+      }
+    }
+
+    res.json({ ...data, freepbx_phone: phone || null });
   } catch (err) {
     res.status(502).json({
       error: "Failed to block contact",

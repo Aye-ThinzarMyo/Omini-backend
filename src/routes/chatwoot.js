@@ -42,6 +42,8 @@ import {
   exportConversations,
   exportChannelTraffic,
   exportContacts,
+  getChatwootAttachments,
+  getChatwootParticipants,
 } from "../controllers/chatwootController";
 
 const router = Router();
@@ -56,6 +58,14 @@ router.get("/:accountId/dashboard", getChatwootDashboard);
 router.get(
   "/:accountId/conversations/:conversationId/messages",
   getChatwootMessages,
+);
+router.get(
+  "/:accountId/conversations/:conversationId/attachments",
+  getChatwootAttachments,
+);
+router.get(
+  "/:accountId/conversations/:conversationId/participants",
+  getChatwootParticipants,
 );
 router.post(
   "/:accountId/conversations/:conversationId/messages",

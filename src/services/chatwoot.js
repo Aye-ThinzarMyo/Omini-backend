@@ -279,6 +279,20 @@ export async function mergeContacts(
   return data;
 }
 
+export async function getConversationAttachments(accountId, conversationId, token) {
+  const { data } = await chatwootApi(token).get(
+    `/accounts/${accountId}/conversations/${conversationId}/attachments`,
+  );
+  return data;
+}
+
+export async function getConversationParticipants(accountId, conversationId, token) {
+  const { data } = await chatwootApi(token).get(
+    `/accounts/${accountId}/conversations/${conversationId}/participants`,
+  );
+  return data;
+}
+
 export async function getContactableInboxes(accountId, contactId, token) {
   const { data } = await chatwootApi(token).get(
     `/accounts/${accountId}/contacts/${contactId}/contactable_inboxes`,
