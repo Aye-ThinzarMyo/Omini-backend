@@ -293,6 +293,14 @@ export async function getConversationParticipants(accountId, conversationId, tok
   return data;
 }
 
+export async function updateConversationParticipants(accountId, conversationId, token, userIds) {
+  const { data } = await chatwootApi(token).patch(
+    `/accounts/${accountId}/conversations/${conversationId}/participants`,
+    { user_ids: userIds },
+  );
+  return data;
+}
+
 export async function getContactableInboxes(accountId, contactId, token) {
   const { data } = await chatwootApi(token).get(
     `/accounts/${accountId}/contacts/${contactId}/contactable_inboxes`,

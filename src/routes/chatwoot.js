@@ -44,6 +44,7 @@ import {
   exportContacts,
   getChatwootAttachments,
   getChatwootParticipants,
+  updateParticipants,
 } from "../controllers/chatwootController";
 
 const router = Router();
@@ -66,6 +67,10 @@ router.get(
 router.get(
   "/:accountId/conversations/:conversationId/participants",
   getChatwootParticipants,
+);
+router.patch(
+  "/:accountId/conversations/:conversationId/participants",
+  updateParticipants,
 );
 router.post(
   "/:accountId/conversations/:conversationId/messages",

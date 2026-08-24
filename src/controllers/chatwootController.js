@@ -33,6 +33,7 @@ import {
   getAccountPlatform,
   getConversationAttachments,
   getConversationParticipants,
+  updateConversationParticipants,
 } from "../services/chatwoot";
 import { sendCsv } from "../utils/csv";
 import { decrypt, encrypt } from "../utils/encryption";
@@ -575,6 +576,33 @@ export const getChatwootParticipants = async (req, res) => {
   } catch (err) {
     res.status(502).json({
       error: "Failed to fetch participants from Chatwoot",
+      detail: err.response?.data || err.message,
+    });
+  }
+};
+
+export const updateParticipants = async (req, res) => {
+  const { accountId, conversationId } = req.params;
+  const { user_ids } = req.body;
+
+  try {
+    const chatwootToken = await getDecryptedChatToken(req);
+    if (!chatwootToken) {
+      return res
+        .status(403)
+        .json({ error: "No Chatwoot API key found for your account" });
+    }
+
+    const data = await updateConversationParticipants(
+      accountId,
+      conversationId,
+      chatwootToken,
+      user_ids,
+    );
+    res.json(data);
+  } catch (err) {
+    res.status(502).json({
+      error: "Failed to update participants",
       detail: err.response?.data || err.message,
     });
   }
