@@ -114,6 +114,17 @@ export async function getAgents(accountId, token) {
   return data;
 }
 
+export async function getAgentAssignedInboxes(accountId, agentId, token) {
+  const { data } = await chatwootApi(token).get(
+    `/accounts/${accountId}/inboxes`,
+  );
+  const inboxes = data?.payload || [];
+  // const filtered = inboxes.filter((inbox) =>
+  //   inbox.agents?.some((a) => a.id === Number(agentId)),
+  // );
+  return inboxes;
+}
+
 export async function updateAgent(accountId, agentId, token, payload) {
   const { data } = await chatwootApi(token).patch(
     `/accounts/${accountId}/agents/${agentId}`,
@@ -279,21 +290,34 @@ export async function mergeContacts(
   return data;
 }
 
-export async function getConversationAttachments(accountId, conversationId, token) {
+export async function getConversationAttachments(
+  accountId,
+  conversationId,
+  token,
+) {
   const { data } = await chatwootApi(token).get(
     `/accounts/${accountId}/conversations/${conversationId}/attachments`,
   );
   return data;
 }
 
-export async function getConversationParticipants(accountId, conversationId, token) {
+export async function getConversationParticipants(
+  accountId,
+  conversationId,
+  token,
+) {
   const { data } = await chatwootApi(token).get(
     `/accounts/${accountId}/conversations/${conversationId}/participants`,
   );
   return data;
 }
 
-export async function updateConversationParticipants(accountId, conversationId, token, userIds) {
+export async function updateConversationParticipants(
+  accountId,
+  conversationId,
+  token,
+  userIds,
+) {
   const { data } = await chatwootApi(token).patch(
     `/accounts/${accountId}/conversations/${conversationId}/participants`,
     { user_ids: userIds },

@@ -34,6 +34,7 @@ import {
   getConversationAttachments,
   getConversationParticipants,
   updateConversationParticipants,
+  getAgentAssignedInboxes,
 } from "../services/chatwoot";
 import { sendCsv } from "../utils/csv";
 import { decrypt, encrypt } from "../utils/encryption";
@@ -1019,8 +1020,6 @@ export const putBlockContact = async (req, res) => {
 
     // 3. Block/unblock phone in FreePBX
     if (phone) {
-      console.log("phone:::", phone);
-      console.log("is blocked::", isBlocked);
       try {
         if (isBlocked) {
           await blockPhoneNumber(
@@ -1209,6 +1208,36 @@ export const getUserDetail = async (req, res) => {
     res
       .status(500)
       .json({ error: "Failed to fetch user", detail: err.message });
+  }
+};
+
+export const getAgentInboxes = async (req, res) => {
+  const { accountId, userId } = req.params;
+
+  try {
+    const chatwootToken = await getDecryptedChatToken(req);
+    if (!chatwootToken) {
+      return res
+        .status(403)
+        .json({ error: "No Chatwoot API key found for your account" });
+    }
+
+    const data = await getAgentAssignedInboxes(
+      accountId,
+      userId,
+      chatwootToken,
+    );
+    res.json(data);
+  } catch (err) {
+    console.error(
+      "getAgentInboxes error:",
+      err.response?.status,
+      err.response?.data || err.message,
+    );
+    res.status(502).json({
+      error: "Failed to fetch agent inboxes",
+      detail: err.response?.data || err.message,
+    });
   }
 };
 

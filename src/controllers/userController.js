@@ -367,9 +367,6 @@ export const updateUser = async (req, res) => {
     await user.update(updates);
 
     const actor = await actorFromRequest(req);
-    // const changes = trackedFields
-    //   .filter((f) => String(before[f] ?? "") !== String(user[f] ?? ""))
-    //   .map((f) => `${f}: "change from" + ${before[f] || "(empty)"} + "to" + ${user[f] || "(empty)"}`);
 
     const changes = trackedFields
       .filter((f) => String(before[f] ?? "") !== String(user[f] ?? ""))

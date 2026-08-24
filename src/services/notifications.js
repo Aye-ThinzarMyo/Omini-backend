@@ -51,6 +51,25 @@ export function notify(userId, notification) {
   return true;
 }
 
+// Broadcast a notification to ALL connected users
+export function notifyAll(notification) {
+  const payload = {
+    id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    type: notification.type || "notification",
+    title: notification.title || "",
+    message: notification.message || "",
+    data: notification.data || null,
+    timestamp: new Date().toISOString(),
+  };
+
+  let count = 0;
+  for (const [, conns] of streams) {
+    for (const res of conns) writeSse(res, "notification", payload);
+    count++;
+  }
+  return count > 0;
+}
+
 export function getConnectedUserIds() {
   return [...streams.keys()];
 }
