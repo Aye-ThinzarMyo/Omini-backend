@@ -6,8 +6,10 @@ import {
   createChatwootAccountUser,
   createChatwootUser,
   addInboxMember,
+  removeInboxMember,
   updateChatwootUserPlatform,
   deleteUserPlatform,
+  getAgentAssignedInboxes,
 } from "../services/chatwoot";
 import {
   createKeycloakUser,
@@ -253,6 +255,7 @@ export const createUser = async (req, res) => {
 
 export const updateUser = async (req, res) => {
   const { id } = req.params;
+  console.log("id::", id);
   const {
     full_name,
     email,
@@ -326,15 +329,34 @@ export const updateUser = async (req, res) => {
       });
       updates.role = normalizedRole;
     }
+    // If agent role and inbox_id provided, sync inbox assignments (add new + remove old)
+    const effectiveRole = normalizedRole || user.role;
 
-    // If agent role and inbox_id provided, add to inbox
-    if (normalizedRole === "agent" && inbox_id && accountId) {
+    if (effectiveRole === "agent" && inbox_id && accountId) {
       const adminUser = await User.findByPk(req.user.sub);
       if (adminUser?.encrypted_chat_secret) {
         const adminToken = decrypt(adminUser.encrypted_chat_secret);
-        const inboxIds = Array.isArray(inbox_id) ? inbox_id : [inbox_id];
-        for (const iId of inboxIds) {
+        const newInboxIds = Array.isArray(inbox_id)
+          ? inbox_id.map(Number)
+          : [Number(inbox_id)];
+        // Get current assigned inboxes
+        const currentInboxes = await getAgentAssignedInboxes(
+          accountId,
+          id,
+          adminToken,
+        );
+        const currentIds = currentInboxes.map((i) => i.id);
+
+        // Add new inboxes
+        const toAdd = newInboxIds.filter((iid) => !currentIds.includes(iid));
+        for (const iId of toAdd) {
           await addInboxMember(accountId, iId, [Number(id)], adminToken);
+        }
+
+        // Remove old inboxes
+        const toRemove = currentIds.filter((iid) => !newInboxIds.includes(iid));
+        for (const iId of toRemove) {
+          await removeInboxMember(accountId, iId, [Number(id)], adminToken);
         }
       }
     }
