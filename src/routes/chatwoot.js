@@ -46,6 +46,7 @@ import {
   getChatwootParticipants,
   updateParticipants,
   getAgentInboxes,
+  syncAgentInboxesController,
 } from "../controllers/chatwootController";
 
 const router = Router();
@@ -245,6 +246,7 @@ router.post(
 );
 router.get("/users/:userId", getUserDetail);
 router.get("/:accountId/users/:userId/inboxes", getAgentInboxes);
+router.put("/:accountId/users/:userId/inboxes", syncAgentInboxesController);
 router.put(
   "/:accountId/account",
   logAction({

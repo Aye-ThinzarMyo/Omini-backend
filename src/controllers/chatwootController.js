@@ -35,6 +35,7 @@ import {
   getConversationParticipants,
   updateConversationParticipants,
   getAgentAssignedInboxes,
+  syncAgentInboxes,
 } from "../services/chatwoot";
 import { sendCsv } from "../utils/csv";
 import { decrypt, encrypt } from "../utils/encryption";
@@ -1236,6 +1237,38 @@ export const getAgentInboxes = async (req, res) => {
     );
     res.status(502).json({
       error: "Failed to fetch agent inboxes",
+      detail: err.response?.data || err.message,
+    });
+  }
+};
+
+export const syncAgentInboxesController = async (req, res) => {
+  const { accountId, userId } = req.params;
+  const { inbox_ids } = req.body;
+
+  try {
+    const chatwootToken = await getDecryptedChatToken(req);
+    if (!chatwootToken) {
+      return res
+        .status(403)
+        .json({ error: "No Chatwoot API key found for your account" });
+    }
+
+    const result = await syncAgentInboxes(
+      accountId,
+      userId,
+      inbox_ids || [],
+      chatwootToken,
+    );
+    res.json(result);
+  } catch (err) {
+    console.error(
+      "syncAgentInboxes error:",
+      err.response?.status,
+      err.response?.data || err.message,
+    );
+    res.status(502).json({
+      error: "Failed to sync agent inboxes",
       detail: err.response?.data || err.message,
     });
   }

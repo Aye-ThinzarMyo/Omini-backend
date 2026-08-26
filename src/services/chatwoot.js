@@ -2,6 +2,7 @@ import axios from "axios";
 
 const BASE_URL = process.env.CHATWOOT_BASE_URL;
 const PLATFORM_TOKEN = process.env.CHATWOOT_PLATFORM_TOKEN;
+import { AgentInbox } from "../database/models";
 
 function chatwootApi(token, prefix = "", version = "v1") {
   return axios.create({
@@ -115,14 +116,28 @@ export async function getAgents(accountId, token) {
 }
 
 export async function getAgentAssignedInboxes(accountId, agentId, token) {
-  const { data } = await chatwootApi(token).get(
+  const { data: inboxData } = await chatwootApi(token).get(
     `/accounts/${accountId}/inboxes`,
   );
-  const inboxes = data?.payload || [];
-  // const filtered = inboxes.filter((inbox) =>
-  //   inbox.agents?.some((a) => a.id === Number(agentId)),
-  // );
-  return inboxes;
+  const allInboxes = inboxData?.payload || [];
+
+  const checks = await Promise.all(
+    allInboxes.map(async (inbox) => {
+      try {
+        const { data } = await chatwootApi(token).get(
+          `/accounts/${accountId}/inboxes/${inbox.id}/assignable_agents`,
+        );
+        const agents = data?.payload || [];
+        const result = agents.some((a) => a.id === Number(agentId))
+          ? inbox
+          : null;
+        return agents.some((a) => a.id === Number(agentId)) ? inbox : null;
+      } catch (err) {
+        return null;
+      }
+    }),
+  );
+  return checks.filter((inbox) => inbox !== null);
 }
 
 export async function updateAgent(accountId, agentId, token, payload) {
@@ -228,6 +243,30 @@ export async function addInboxMember(accountId, inboxId, userIds, token) {
     { inbox_id: inboxId, user_ids: userIds },
   );
   return data;
+}
+
+export async function removeInboxMember(accountId, inboxId, userIds, token) {
+  const { data } = await chatwootApi(token).delete(
+    `/accounts/${accountId}/inbox_members`,
+    { data: { inbox_id: inboxId, user_ids: userIds } },
+  );
+  return data;
+}
+
+export async function syncAgentInboxes(accountId, agentId, newInboxIds, token) {
+  const current = await getAgentAssignedInboxes(accountId, agentId, token);
+  const currentIds = current.map((i) => i.id);
+  const toAdd = newInboxIds.filter((id) => !currentIds.includes(id));
+  const toRemove = currentIds.filter((id) => !newInboxIds.includes(id));
+
+  for (const inboxId of toAdd) {
+    await addInboxMember(accountId, inboxId, [Number(agentId)], token);
+  }
+  for (const inboxId of toRemove) {
+    await removeInboxMember(accountId, inboxId, [Number(agentId)], token);
+  }
+
+  return { added: toAdd, removed: toRemove, current: newInboxIds };
 }
 
 export async function listContacts(accountId, token, params = {}) {
