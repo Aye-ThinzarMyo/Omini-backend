@@ -54,6 +54,7 @@ export const chatwootWebhook = async (req, res) => {
 };
 
 async function processChatwootEvent(event, payload) {
+  console.log("📥 Chatwoot event:", event);
   switch (event) {
     case "message_created":
       await handleNewMessage(payload);
