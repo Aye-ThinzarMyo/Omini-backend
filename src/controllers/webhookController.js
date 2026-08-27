@@ -81,8 +81,12 @@ async function handleNewMessage(payload) {
   const conversation = payload?.conversation;
 
   // Skip bot messages and agent messages — only notify on incoming customer messages
-  if (message?.message_type !== 0) return; // 0 = incoming
+  const msgType = message?.message_type;
+  const isIncoming =
+    typeof msgType === "string" ? msgType === "incoming" : msgType === 0;
+  if (!isIncoming) return; // 0 = incoming
 
+  // Only notify when assigned to a human agent (skip AgentBot / unassigned)
   const assigneeId = conversation?.assignee_id;
   if (!assigneeId) return;
 
