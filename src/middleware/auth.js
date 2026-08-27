@@ -41,15 +41,20 @@ export async function authMiddleware(req, res, next) {
   try {
     console.log("=== AUTH MIDDLEWARE START ===");
 
-    // 1. Get auth header
+    // 1. Get auth header or query param (EventSource can't set headers)
     const authHeader = req.headers.authorization;
+    const queryToken = req.query?.token;
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    const rawToken = authHeader?.startsWith("Bearer ")
+      ? authHeader.split(" ")[1]
+      : queryToken;
+
+    if (!rawToken) {
       return res.status(401).json({ error: "No token provided" });
     }
 
     // 2. Extract token
-    const token = authHeader.split(" ")[1];
+    const token = rawToken;
 
     // 3. Decode token header (NO VERIFY)
     const decodedHeader = jwt.decode(token, { complete: true });

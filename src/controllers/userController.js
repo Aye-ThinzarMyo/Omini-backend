@@ -255,7 +255,6 @@ export const createUser = async (req, res) => {
 
 export const updateUser = async (req, res) => {
   const { id } = req.params;
-  console.log("id::", id);
   const {
     full_name,
     email,

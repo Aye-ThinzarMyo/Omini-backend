@@ -31,9 +31,6 @@ export function connectNotifications(userId, res) {
   });
 }
 
-// Push a live notification to a connected user's SSE streams.
-// notification = { type, title, message, data }
-// Returns true if at least one stream received it, false if the user is offline.
 export function notify(userId, notification) {
   const conns = streams.get(userId);
   if (!conns || conns.size === 0) return false;
@@ -51,7 +48,6 @@ export function notify(userId, notification) {
   return true;
 }
 
-// Broadcast a notification to ALL connected users
 export function notifyAll(notification) {
   const payload = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
