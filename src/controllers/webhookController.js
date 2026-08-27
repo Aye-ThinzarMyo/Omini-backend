@@ -32,9 +32,23 @@ export const chatbot = async (req, res) => {
   }
 };
 
+// Resolve the assigned human agent id from conversation meta, or null if
+// unassigned / assigned to an AgentBot.
+function resolveHumanAssignee(conversation) {
+  if (!conversation) return null;
+  const meta = conversation.meta || {};
+  const assigneeType = meta.assignee_type || meta.assignee?.type;
+  const isBot =
+    assigneeType === "AgentBot" ||
+    assigneeType === "agent_bot" ||
+    meta.assignee?.type === "agent_bot";
+  if (isBot) return null;
+  const assigneeId = meta.assignee?.id || conversation.assignee_id;
+  return assigneeId || null;
+}
+
 // Chatwoot webhook receiver — pushes events to connected users via SSE
 export const chatwootWebhook = async (req, res) => {
-  console.log("🔔 Webhook Request Received:", new Date().toISOString());
   console.log("Headers:", req.headers);
   console.log("Body:", JSON.stringify(req.body));
   // Always respond 200 immediately so Chatwoot doesn't retry
@@ -42,9 +56,10 @@ export const chatwootWebhook = async (req, res) => {
 
   try {
     const event = req.body?.event;
-    const payload = req.body?.payload;
+    // For Chatwoot v5+, the whole body is the payload (no nested "payload" wrapper)
+    const payload = req.body?.payload || req.body;
 
-    if (!event || !payload) return;
+    if (!event) return;
 
     // Process async so response isn't delayed
     setImmediate(() => processChatwootEvent(event, payload));
@@ -86,9 +101,17 @@ async function handleNewMessage(payload) {
     typeof msgType === "string" ? msgType === "incoming" : msgType === 0;
   if (!isIncoming) return; // 0 = incoming
 
-  // Only notify when assigned to a human agent (skip AgentBot / unassigned)
-  const assigneeId = conversation?.assignee_id;
+  // Resolve assignee: meta.assignee holds { id, name, type } where type is
+  // "User" for humans or "AgentBot" for bots.
+  const assigneeId = resolveHumanAssignee(conversation);
   if (!assigneeId) return;
+
+  console.log("=== NOTIFYING MESSAGE ===", {
+    event: "message_created",
+    assigneeId,
+    conversationId: conversation?.id,
+    messageId: message?.id,
+  });
 
   const users = await User.findAll({
     where: { chat_admin_user_id: assigneeId },
@@ -116,7 +139,7 @@ async function handleNewMessage(payload) {
 
 async function handleNewConversation(payload) {
   const conversation = payload?.conversation || payload;
-  const assigneeId = conversation?.assignee_id;
+  const assigneeId = resolveHumanAssignee(conversation);
   if (!assigneeId) return;
 
   const users = await User.findAll({
@@ -142,7 +165,7 @@ async function handleNewConversation(payload) {
 
 async function handleConversationUpdated(payload) {
   const conversation = payload?.conversation || payload;
-  const assigneeId = conversation?.assignee_id;
+  const assigneeId = resolveHumanAssignee(conversation);
   if (!assigneeId) return;
 
   const users = await User.findAll({
@@ -165,7 +188,7 @@ async function handleConversationUpdated(payload) {
 
 async function handleAssigneeUpdated(payload) {
   const conversation = payload?.conversation || payload;
-  const newAssigneeId = conversation?.assignee_id;
+  const newAssigneeId = resolveHumanAssignee(conversation);
   if (!newAssigneeId) return;
 
   const users = await User.findAll({
