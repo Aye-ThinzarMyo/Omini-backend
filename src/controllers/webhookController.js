@@ -34,6 +34,9 @@ export const chatbot = async (req, res) => {
 
 // Chatwoot webhook receiver — pushes events to connected users via SSE
 export const chatwootWebhook = async (req, res) => {
+  console.log("🔔 Webhook Request Received:", new Date().toISOString());
+  console.log("Headers:", req.headers);
+  console.log("Body:", JSON.stringify(req.body));
   // Always respond 200 immediately so Chatwoot doesn't retry
   res.status(200).json({ status: "ok" });
 
