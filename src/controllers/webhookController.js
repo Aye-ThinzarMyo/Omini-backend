@@ -192,9 +192,10 @@ async function handleAssigneeUpdated(payload) {
   if (!newAssigneeId) return;
 
   const users = await User.findAll({
-    where: { chat_admin_user_id: newAssigneeId },
+    where: { chat_admin_user_id: assigneeId },
     attributes: ["id", "full_name"],
   });
+  console.log("=== USERS FOUND ===", assigneeId, users.length, users.map((u) => u.id));
 
   for (const user of users) {
     notify(user.id, {
