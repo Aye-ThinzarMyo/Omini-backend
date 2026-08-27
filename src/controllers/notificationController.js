@@ -1,3 +1,4 @@
+import { Notification } from "../database/models";
 import {
   setupNotificationSse,
   connectNotifications,
@@ -10,5 +11,67 @@ export const notificationStream = async (req, res) => {
   } catch (err) {
     console.error("Notification stream error:", err);
     res.end();
+  }
+};
+
+export const getNotifications = async (req, res) => {
+  try {
+    const userId = req.user.sub;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const offset = (page - 1) * limit;
+
+    const { rows, count } = await Notification.findAndCountAll({
+      where: { user_id: userId },
+      order: [["created_at", "DESC"]],
+      limit,
+      offset,
+    });
+
+    const unreadCount = await Notification.count({
+      where: { user_id: userId, is_read: false },
+    });
+
+    res.json({ notifications: rows, total: count, unreadCount, page, limit });
+  } catch (err) {
+    console.error("Get notifications error:", err);
+    res.status(500).json({ error: "Failed to fetch notifications" });
+  }
+};
+
+export const markAsRead = async (req, res) => {
+  try {
+    const userId = req.user.sub;
+    const { id } = req.params;
+
+    const [updated] = await Notification.update(
+      { is_read: true },
+      { where: { id, user_id: userId } },
+    );
+
+    if (!updated) {
+      return res.status(404).json({ error: "Notification not found" });
+    }
+
+    res.json({ message: "Marked as read" });
+  } catch (err) {
+    console.error("Mark as read error:", err);
+    res.status(500).json({ error: "Failed to mark as read" });
+  }
+};
+
+export const markAllAsRead = async (req, res) => {
+  try {
+    const userId = req.user.sub;
+
+    await Notification.update(
+      { is_read: true },
+      { where: { user_id: userId, is_read: false } },
+    );
+
+    res.json({ message: "All marked as read" });
+  } catch (err) {
+    console.error("Mark all as read error:", err);
+    res.status(500).json({ error: "Failed to mark all as read" });
   }
 };

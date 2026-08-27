@@ -1,3 +1,5 @@
+import { Notification } from "../database/models";
+
 const streams = new Map(); // userId -> Set<res>
 
 function writeSse(res, event, data) {
@@ -31,10 +33,7 @@ export function connectNotifications(userId, res) {
   });
 }
 
-export function notify(userId, notification) {
-  const conns = streams.get(userId);
-  if (!conns || conns.size === 0) return false;
-
+export async function notify(userId, notification) {
   const payload = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
     type: notification.type || "notification",
@@ -44,11 +43,28 @@ export function notify(userId, notification) {
     timestamp: new Date().toISOString(),
   };
 
+  // Persist to DB
+  try {
+    await Notification.create({
+      user_id: String(userId),
+      type: payload.type,
+      title: payload.title,
+      message: payload.message,
+      data: payload.data,
+    });
+  } catch (err) {
+    console.error("Failed to save notification:", err.message);
+  }
+
+  // Push via SSE
+  const conns = streams.get(String(userId));
+  if (!conns || conns.size === 0) return false;
+
   for (const res of conns) writeSse(res, "notification", payload);
   return true;
 }
 
-export function notifyAll(notification) {
+export async function notifyAll(notification) {
   const payload = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
     type: notification.type || "notification",
