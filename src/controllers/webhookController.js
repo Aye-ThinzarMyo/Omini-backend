@@ -2,6 +2,7 @@ import axios from "axios";
 import { notify } from "../services/notifications";
 import { User } from "../database/models";
 import { getInboxInfo } from "../services/chatwoot";
+import { decrypt } from "../utils/encryption";
 
 const CHATWOOT_PLATFORM_TOKEN = process.env.CHATWOOT_PLATFORM_TOKEN;
 const CHATWOOT_BASE_URL = process.env.CHATWOOT_BASE_URL;
@@ -108,7 +109,68 @@ async function handleNewMessage(payload) {
   // Resolve assignee: meta.assignee holds { id, name, type } where type is
   // "User" for humans or "AgentBot" for bots.
   const assigneeId = resolveHumanAssignee(conversation);
-  if (!assigneeId) return;
+  if (!assigneeId) {
+    // Unassigned / bot-owned message → alert all administrators.
+    console.log("=== UNASSIGNED MESSAGE ===", {
+      event: "message_created",
+      conversationId: conversation?.id,
+      messageId: message?.id,
+    });
+
+    const admins = await User.findAll({
+      where: { role: "administrator" },
+      attributes: ["id", "full_name"],
+    });
+
+    const senderName =
+      payload?.sender?.name || payload?.contact?.name || "Customer";
+    const content = message?.content?.slice(0, 200) || "Sent an attachment";
+    const inboxId = conversation?.inbox_id ?? payload?.inbox?.id;
+    let inboxName = payload?.inbox?.name;
+    let channel = conversation?.channel || payload?.inbox?.channel;
+
+    // Enrich inbox name/channel from Chatwoot if missing, using an admin's token.
+    if (inboxId && (!inboxName || !channel) && admins.length > 0) {
+      const cleanAdmin = await User.findByPk(admins[0].id, {
+        attributes: ["id", "encrypted_chat_secret"],
+      });
+      let token = CHATWOOT_PLATFORM_TOKEN;
+      if (cleanAdmin?.encrypted_chat_secret) {
+        try {
+          token = decrypt(cleanAdmin.encrypted_chat_secret);
+        } catch {
+          // fall back to platform token
+        }
+      }
+      const info = await getInboxInfo(
+        conversation?.account_id || payload?.account?.id || 40,
+        inboxId,
+        token,
+      );
+      if (info) {
+        inboxName = inboxName || info.name;
+        channel = channel || info.channelType;
+      }
+    }
+
+    for (const admin of admins) {
+      notify(admin.id, {
+        type: "unassigned_message",
+        title: `Unassigned message from ${senderName}`,
+        message: content,
+        data: {
+          conversationId: conversation?.id,
+          messageId: message?.id,
+          sender: senderName,
+          content,
+          inboxId,
+          inboxName,
+          channel,
+        },
+      });
+    }
+    return;
+  }
 
   console.log("=== NOTIFYING MESSAGE ===", {
     event: "message_created",
@@ -140,7 +202,6 @@ async function handleNewMessage(payload) {
       });
       if (cleanUser?.encrypted_chat_secret) {
         try {
-          const { decrypt } = await import("../utils/encryption");
           token = decrypt(cleanUser.encrypted_chat_secret);
         } catch (e) {
           // fall through to platform token
