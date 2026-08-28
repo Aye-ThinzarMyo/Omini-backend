@@ -73,6 +73,27 @@ export async function getInboxes(accountId, token) {
   return data;
 }
 
+// Fetch inbox name + channel for a given account + inbox id.
+// Returns { name, channel_type } or null on failure.
+export async function getInboxInfo(accountId, inboxId, token) {
+  try {
+    const { data } = await chatwootApi(token).get(
+      `/accounts/${accountId}/inboxes/${inboxId}`,
+    );
+    return {
+      name: data?.name,
+      channelType: data?.channel_type,
+    };
+  } catch (err) {
+    console.error(
+      `getInboxInfo failed for inbox ${inboxId}:`,
+      err.response?.status,
+      err.response?.data || err.message,
+    );
+    return null;
+  }
+}
+
 export async function getAccountUsers(accountId) {
   const { data } = await chatwootApi(PLATFORM_TOKEN, "/platform").get(
     `/accounts/${accountId}/account_users`,

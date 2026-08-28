@@ -1,6 +1,10 @@
 import axios from "axios";
 import { notify } from "../services/notifications";
 import { User } from "../database/models";
+import { getInboxInfo } from "../services/chatwoot";
+
+const CHATWOOT_PLATFORM_TOKEN = process.env.CHATWOOT_PLATFORM_TOKEN;
+const CHATWOOT_BASE_URL = process.env.CHATWOOT_BASE_URL;
 
 export const chatbot = async (req, res) => {
   try {
@@ -122,8 +126,38 @@ async function handleNewMessage(payload) {
     payload?.sender?.name || payload?.contact?.name || "Customer";
   const content = message?.content?.slice(0, 200) || "Sent an attachment";
   const inboxId = conversation?.inbox_id ?? payload?.inbox?.id;
-  const inboxName = payload?.inbox?.name;
-  const channel = conversation?.channel || payload?.inbox?.channel;
+  let inboxName = payload?.inbox?.name;
+  let channel = conversation?.channel || payload?.inbox?.channel;
+
+  // If the payload doesn't include inbox name/channel, enrich from Chatwoot
+  // using a user token (platform token can't access /inboxes/{id}).
+  if (inboxId && (!inboxName || !channel)) {
+    // Prefer the assignee's user token for the inbox lookup.
+    let token = CHATWOOT_PLATFORM_TOKEN;
+    if (users.length > 0) {
+      const cleanUser = await User.findByPk(users[0].id, {
+        attributes: ["id", "encrypted_chat_secret"],
+      });
+      if (cleanUser?.encrypted_chat_secret) {
+        try {
+          const { decrypt } = await import("../utils/encryption");
+          token = decrypt(cleanUser.encrypted_chat_secret);
+        } catch (e) {
+          // fall through to platform token
+        }
+      }
+    }
+
+    const info = await getInboxInfo(
+      conversation?.account_id || payload?.account?.id || 40,
+      inboxId,
+      token,
+    );
+    if (info) {
+      inboxName = inboxName || info.name;
+      channel = channel || info.channelType;
+    }
+  }
 
   for (const user of users) {
     notify(user.id, {

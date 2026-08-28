@@ -29,7 +29,20 @@ export const getNotifications = async (req, res) => {
       where: { user_id: userId, is_read: false },
     });
 
-    res.json({ notifications: rows, total: count, unreadCount, limit });
+    // Surface inbox/channel fields from the stored data payload at top level
+    const notifications = rows.map((n) => {
+      const json = n.toJSON();
+      const d = json.data || {};
+      return {
+        ...json,
+        inboxId: d.inboxId ?? null,
+        inboxName: d.inboxName ?? null,
+        channel: d.channel ?? null,
+        conversationId: d.conversationId ?? null,
+      };
+    });
+
+    res.json({ notifications, total: count, unreadCount, limit });
   } catch (err) {
     console.error("Get notifications error:", err);
     res.status(500).json({ error: "Failed to fetch notifications" });
