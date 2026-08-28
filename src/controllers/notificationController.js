@@ -35,10 +35,10 @@ export const getNotifications = async (req, res) => {
       const d = json.data || {};
       return {
         ...json,
-        inboxId: d.inboxId ?? null,
-        inboxName: d.inboxName ?? null,
-        channel: d.channel ?? null,
-        conversationId: d.conversationId ?? null,
+        // inboxId: d.inboxId ?? null,
+        // inboxName: d.inboxName ?? null,
+        // channel: d.channel ?? null,
+        // conversationId: d.conversationId ?? null,
       };
     });
 
