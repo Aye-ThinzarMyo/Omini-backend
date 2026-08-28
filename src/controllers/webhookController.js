@@ -121,6 +121,9 @@ async function handleNewMessage(payload) {
   const senderName =
     payload?.sender?.name || payload?.contact?.name || "Customer";
   const content = message?.content?.slice(0, 200) || "Sent an attachment";
+  const inboxId = conversation?.inbox_id ?? payload?.inbox?.id;
+  const inboxName = payload?.inbox?.name;
+  const channel = conversation?.channel || payload?.inbox?.channel;
 
   for (const user of users) {
     notify(user.id, {
@@ -132,6 +135,9 @@ async function handleNewMessage(payload) {
         messageId: message?.id,
         sender: senderName,
         content,
+        inboxId,
+        inboxName,
+        channel,
       },
     });
   }
@@ -158,6 +164,9 @@ async function handleNewConversation(payload) {
       data: {
         conversationId: conversation?.id,
         sender: senderName,
+        inboxId: conversation?.inbox_id ?? payload?.inbox?.id,
+        inboxName: payload?.inbox?.name,
+        channel: conversation?.channel || payload?.inbox?.channel,
       },
     });
   }
@@ -181,6 +190,9 @@ async function handleConversationUpdated(payload) {
       data: {
         conversationId: conversation?.id,
         status: conversation?.status,
+        inboxId: conversation?.inbox_id ?? payload?.inbox?.id,
+        inboxName: payload?.inbox?.name,
+        channel: conversation?.channel || payload?.inbox?.channel,
       },
     });
   }
@@ -192,10 +204,10 @@ async function handleAssigneeUpdated(payload) {
   if (!newAssigneeId) return;
 
   const users = await User.findAll({
-    where: { chat_admin_user_id: assigneeId },
+    where: { chat_admin_user_id: newAssigneeId },
     attributes: ["id", "full_name"],
   });
-  console.log("=== USERS FOUND ===", assigneeId, users.length, users.map((u) => u.id));
+  console.log("=== USERS FOUND ===", newAssigneeId, users.length, users.map((u) => u.id));
 
   for (const user of users) {
     notify(user.id, {

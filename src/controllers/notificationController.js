@@ -17,22 +17,19 @@ export const notificationStream = async (req, res) => {
 export const getNotifications = async (req, res) => {
   try {
     const userId = req.user.sub;
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
-    const offset = (page - 1) * limit;
+    // limit = how many to return (no pagination offset). Default 50.
+    const limit = parseInt(req.query.limit) || 50;
 
     const { rows, count } = await Notification.findAndCountAll({
       where: { user_id: userId },
       order: [["created_at", "DESC"]],
       limit,
-      offset,
     });
-
     const unreadCount = await Notification.count({
       where: { user_id: userId, is_read: false },
     });
 
-    res.json({ notifications: rows, total: count, unreadCount, page, limit });
+    res.json({ notifications: rows, total: count, unreadCount, limit });
   } catch (err) {
     console.error("Get notifications error:", err);
     res.status(500).json({ error: "Failed to fetch notifications" });
