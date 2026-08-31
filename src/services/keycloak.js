@@ -175,11 +175,6 @@ export async function createKeycloakUser({
   if (!keycloakUser?.id) {
     throw new Error("Keycloak user created but ID not found");
   }
-  await api.put(`/users/${keycloakUser.id}/reset-password`, {
-    type: "password",
-    value: "Agb@2026",
-    temporary: true,
-  });
 
   return keycloakUser.id;
 }
