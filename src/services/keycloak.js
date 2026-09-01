@@ -167,7 +167,7 @@ export async function createKeycloakUser({
       role: role,
       fullname: fullname,
     },
-    credentials: [{ type: "password", value: password, temporary: false }],
+    // credentials: [{ type: "password", value: password, temporary: false }],
   });
 
   const searchRes = await api.get(`/users?email=${encodeURIComponent(email)}`);
