@@ -28,6 +28,17 @@ import {
   logAfterResponse,
 } from "../services/auditLog";
 
+// Generate a random password (Chatwoot requires a password on user creation).
+function generatePassword(length = 12) {
+  const chars =
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%";
+  let pwd = "";
+  for (let i = 0; i < length; i++) {
+    pwd += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return pwd;
+}
+
 export const createUser = async (req, res) => {
   const {
     full_name,
@@ -40,11 +51,15 @@ export const createUser = async (req, res) => {
     inbox_id,
   } = req.body;
 
-  if (!full_name || !email || !password) {
+  if (!full_name || !email) {
     return res
       .status(400)
-      .json({ error: "full_name, email, and password are required" });
+      .json({ error: "full_name and email are required" });
   }
+
+  // Generate a password at the backend when none is provided (Chatwoot requires one).
+  const generatedPassword = password || generatePassword();
+  const effectivePassword = password || generatedPassword;
 
   const actor = await actorFromRequest(req);
   const logFail = (action) =>
@@ -75,9 +90,8 @@ export const createUser = async (req, res) => {
       chatwootResult = await createChatwootUser({
         name: full_name,
         email,
-        password,
+        password: effectivePassword,
         phone,
-        // department,
       });
     } catch (err) {
       await t.rollback();
@@ -113,7 +127,7 @@ export const createUser = async (req, res) => {
       return;
     }
     const encryptedApiKey = encrypt(apiKey);
-    const encryptedPassword = encrypt(password);
+    const encryptedPassword = encrypt(effectivePassword);
     const { resultRole } = chatwootRole;
     if (inbox_id) {
       try {
