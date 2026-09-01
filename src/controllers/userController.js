@@ -30,12 +30,15 @@ import {
 
 // Generate a random password (Chatwoot requires a password on user creation).
 function generatePassword(length = 12) {
-  const chars =
-    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%";
+  const letters =
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  const specialChars = "!@#$%^&*()_+-=[]{}|<>,.?~";
   let pwd = "";
-  for (let i = 0; i < length; i++) {
-    pwd += chars[Math.floor(Math.random() * chars.length)];
+  for (let i = 0; i < length - 1; i++) {
+    pwd += letters[Math.floor(Math.random() * letters.length)];
   }
+  // Guarantee at least one special character (Chatwoot requires it).
+  pwd += specialChars[Math.floor(Math.random() * specialChars.length)];
   return pwd;
 }
 
