@@ -46,20 +46,18 @@ export const createUser = async (req, res) => {
     phone,
     department,
     role,
-    password,
+
     accountId,
     inbox_id,
   } = req.body;
 
   if (!full_name || !email) {
-    return res
-      .status(400)
-      .json({ error: "full_name and email are required" });
+    return res.status(400).json({ error: "full_name and email are required" });
   }
 
   // Generate a password at the backend when none is provided (Chatwoot requires one).
-  const generatedPassword = password || generatePassword();
-  const effectivePassword = password || generatedPassword;
+  const generatedPassword = generatePassword();
+  const effectivePassword = generatedPassword;
 
   const actor = await actorFromRequest(req);
   const logFail = (action) =>
@@ -179,7 +177,7 @@ export const createUser = async (req, res) => {
       keycloakId = await createKeycloakUser({
         name: full_name.replaceAll(" ", "").toLowerCase(),
         email,
-        password,
+        // password,
         department,
         role: resultRole,
         fullname: full_name,
@@ -272,7 +270,7 @@ export const updateUser = async (req, res) => {
   const {
     full_name,
     email,
-    password,
+    // password,
     role,
     department,
     phone,
@@ -299,7 +297,7 @@ export const updateUser = async (req, res) => {
 
     const updates = {};
     const chatwootPayload = {};
-    let passwordUpdated = false;
+    // let passwordUpdated = false;
 
     if (full_name) {
       chatwootPayload.name = full_name;
@@ -309,9 +307,9 @@ export const updateUser = async (req, res) => {
       chatwootPayload.email = email;
       updates.email = email;
     }
-    if (password) {
-      chatwootPayload.password = password;
-    }
+    // if (password) {
+    //   chatwootPayload.password = password;
+    // }
     if (phone) updates.phone = phone;
     if (department) updates.department = department;
 
@@ -388,11 +386,11 @@ export const updateUser = async (req, res) => {
     }
 
     // Reset password in Keycloak
-    if (password) {
-      await resetKeycloakPassword(user.id, password);
-      updates.password = encrypt(password);
-      passwordUpdated = true;
-    }
+    // if (password) {
+    //   await resetKeycloakPassword(user.id, password);
+    //   updates.password = encrypt(password);
+    //   passwordUpdated = true;
+    // }
 
     // Update encrypted_chat_secret if new api key returned
     if (newApiKey) {
@@ -409,7 +407,7 @@ export const updateUser = async (req, res) => {
         (f) =>
           `${labelMap[f]} from ${before[f] || "(empty)"} to ${user[f] || "(empty)"}`,
       );
-    if (passwordUpdated) changes.push("password changed");
+    // if (passwordUpdated) changes.push("password changed");
 
     const userData = user.toJSON();
     delete userData.encrypted_chat_secret;
