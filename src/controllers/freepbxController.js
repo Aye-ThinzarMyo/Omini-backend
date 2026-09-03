@@ -9,12 +9,21 @@ import { getKeycloakUser } from "../services/keycloak";
 import { User } from "../database/models";
 import { decrypt } from "../utils/encryption";
 
-const SIP_DOMAIN = process.env.FREEPBX_SIP_DOMAIN || "172.18.26.20";
-const SIP_WS_SERVERS =
-  process.env.FREEPBX_SIP_WS_SERVERS || "wss://freepbx-uat.agbisp.net:8089/ws";
+// SIP realm + WebSocket endpoint are environment-only — no hardcoded fallback,
+// so a misconfigured deploy fails loudly at the first sip-config request
+// instead of silently registering against the wrong PBX.
+const SIP_DOMAIN = process.env.FREEPBX_SIP_DOMAIN;
+const SIP_WS_SERVERS = process.env.FREEPBX_SIP_WS_SERVERS;
 
 export const getSipConfig = async (req, res) => {
   try {
+    if (!SIP_DOMAIN || !SIP_WS_SERVERS) {
+      return res.status(500).json({
+        error:
+          "SIP config unavailable: set FREEPBX_SIP_DOMAIN and FREEPBX_SIP_WS_SERVERS in the backend .env",
+      });
+    }
+
     const user = await User.findByPk(req.user.sub);
     if (!user || !user.freepbx_extension_id) {
       return res
