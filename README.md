@@ -10,12 +10,10 @@ This README would normally document whatever steps are necessary to get your app
 
 ### How do I get set up? ###
 
-* Summary of set up
-* Configuration
-* Dependencies
-* Database configuration
-* How to run tests
-* Deployment instructions
+* `npm install`, then copy `.env.example` to `.env` and fill it in.
+* `npm run dev` (nodemon) or `npm start`; in UAT it runs under PM2 as `Omni_Backend`.
+* FreePBX WebRTC provisioning needs a one-time MySQL user + firewall setup on
+  the PBX host — see [docs/freepbx-webrtc-setup.md](docs/freepbx-webrtc-setup.md).
 
 ### Contribution guidelines ###
 

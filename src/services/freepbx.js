@@ -74,6 +74,7 @@
 import axios from "axios";
 import crypto from "crypto";
 import qs from "qs";
+import mysql from "mysql2/promise";
 const FREEPBX_GQL_URL = process.env.FREEPBX_GQL_URL;
 const FREEPBX_TOKEN_URL = process.env.FREEPBX_TOKEN_URL;
 const CLIENT_ID = process.env.FREEPBX_CLIENT_ID;
@@ -178,7 +179,6 @@ export async function createFreepbxExtension({ name, email }) {
     extensionId,
     name,
     tech: "pjsip",
-    webrtc: "yes",
     outboundCid: "",
     email,
     umEnable: false,
@@ -219,9 +219,84 @@ export async function createFreepbxExtension({ name, email }) {
     );
   }
 
+  // The Core GraphQL schema has no WebRTC inputs (AVPF/ICE/DTLS...), so those
+  // are written straight into FreePBX's `sip` table over MySQL; the doreload
+  // below regenerates pjsip.endpoint.conf from that table.
+  try {
+    await enableWebrtcSettings(extensionId);
+  } catch (err) {
+    await deleteFreepbxExtension(extensionId).catch(() => {});
+    throw new Error(`enableWebrtcSettings failed: ${err.message}`);
+  }
+
   await gqlRequest(`mutation { doreload(input: {}) { status message } }`);
 
   return { extensionId, extPassword };
+}
+
+// 5b. Apply WebRTC endpoint settings (AVPF, ICE, RTCP mux, DTLS-SRTP, DTLS).
+// FreePBX stores per-extension pjsip settings as (id, keyword, data) rows in
+// the `asterisk.sip` table — the same table the admin UI reads — so writing
+// there keeps the UI accurate and survives reloads. Needs a DB user with
+// SELECT/INSERT/UPDATE on that one table; see docs/freepbx-webrtc-setup.md.
+const WEBRTC_SIP_SETTINGS = {
+  avpf: "yes", // Enable AVPF
+  icesupport: "yes", // Enable ICE Support
+  rtcp_mux: "yes", // Enable RTCP Mux
+  media_encryption: "dtls", // Media Encryption = DTLS-SRTP
+  dtlsenable: "yes", // Enable DTLS
+  dtlsverify: "fingerprint", // required for DTLS to negotiate
+  dtlssetup: "actpass",
+  force_avp: "yes",
+  media_use_received_transport: "yes",
+};
+
+let freepbxDbPool = null;
+function getFreepbxDbPool() {
+  if (freepbxDbPool) return freepbxDbPool;
+  const { FREEPBX_DB_HOST, FREEPBX_DB_USER, FREEPBX_DB_PASSWORD } = process.env;
+  if (!FREEPBX_DB_HOST || !FREEPBX_DB_USER || !FREEPBX_DB_PASSWORD) {
+    throw new Error(
+      "FREEPBX_DB_HOST / FREEPBX_DB_USER / FREEPBX_DB_PASSWORD are not set; cannot apply WebRTC settings to the extension",
+    );
+  }
+  freepbxDbPool = mysql.createPool({
+    host: FREEPBX_DB_HOST,
+    port: parseInt(process.env.FREEPBX_DB_PORT || "3306", 10),
+    user: FREEPBX_DB_USER,
+    password: FREEPBX_DB_PASSWORD,
+    database: process.env.FREEPBX_DB_NAME || "asterisk",
+    connectionLimit: 3,
+    connectTimeout: 10_000,
+  });
+  return freepbxDbPool;
+}
+
+async function enableWebrtcSettings(extensionId) {
+  const id = String(extensionId);
+  const pool = getFreepbxDbPool();
+
+  // Refuse to write for an id that has no extension row, so a failed create
+  // can never leave orphan settings behind.
+  const [rows] = await pool.query(
+    "SELECT 1 FROM sip WHERE id = ? AND keyword = 'account' LIMIT 1",
+    [id],
+  );
+  if (rows.length === 0) {
+    throw new Error(`extension ${id} not found in FreePBX sip table`);
+  }
+
+  // Idempotent: re-running for the same extension just re-asserts the values.
+  const values = Object.entries(WEBRTC_SIP_SETTINGS).map(([keyword, data]) => [
+    id,
+    keyword,
+    data,
+    0,
+  ]);
+  await pool.query(
+    "INSERT INTO sip (id, keyword, data, flags) VALUES ? ON DUPLICATE KEY UPDATE data = VALUES(data)",
+    [values],
+  );
 }
 
 // 6. Rollback helper
