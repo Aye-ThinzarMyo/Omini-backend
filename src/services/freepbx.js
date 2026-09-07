@@ -178,11 +178,12 @@ export async function createFreepbxExtension({ name, email }) {
     extensionId,
     name,
     tech: "pjsip",
+    webrtc: "yes",
     outboundCid: "",
     email,
     umEnable: false,
     vmEnable: false,
-    maxContacts: "1",
+    maxContacts: "5",
   };
 
   const createResult = await gqlRequest(createMutation, {
