@@ -106,17 +106,24 @@ openssl rand -base64 32
 ```bash
 mysql <<'SQL'
 CREATE USER 'omni_webrtc'@'BACKEND_PRIVATE_IP' IDENTIFIED BY 'PASTE_PASSWORD_HERE';
-GRANT SELECT, INSERT, UPDATE ON asterisk.sip TO 'omni_webrtc'@'BACKEND_PRIVATE_IP';
+GRANT SELECT, INSERT, UPDATE ON asterisk.sip             TO 'omni_webrtc'@'BACKEND_PRIVATE_IP';
+GRANT SELECT, INSERT, UPDATE ON asterisk.certman_mapping TO 'omni_webrtc'@'BACKEND_PRIVATE_IP';
+GRANT SELECT                 ON asterisk.certman_certs   TO 'omni_webrtc'@'BACKEND_PRIVATE_IP';
 FLUSH PRIVILEGES;
 SQL
 ```
 
-Why exactly these grants: `SELECT` for the existence check, `INSERT`/`UPDATE`
-for the upsert. No `DELETE`, nothing on other tables, no `asterisk.*`. The
-backend cannot do anything to the PBX through this user beyond editing
-extension settings — a capability it already has via the GraphQL admin client.
+Why exactly these three tables: `sip` holds the per-extension pjsip settings
+(AVPF, ICE, RTCP mux, media encryption); `certman_mapping` is where the
+Certificate Manager module records "Enable DTLS = Yes" for a device (a row
+present = enabled) and its verify/setup/rekey values; `certman_certs` is
+read-only to look up the id of the PBX's default certificate. `SELECT` covers
+the existence checks and the cert lookup, `INSERT`/`UPDATE` the upserts. No
+`DELETE`, nothing else in `asterisk.*`. The backend cannot do anything to the
+PBX through this user beyond editing extension settings — a capability it
+already has via the GraphQL admin client.
 
-**2.2** Confirm the grant took:
+**2.2** Confirm the grants took:
 
 ```bash
 mysql -e "SHOW GRANTS FOR 'omni_webrtc'@'BACKEND_PRIVATE_IP'"
@@ -126,7 +133,28 @@ Expected (plus a `USAGE` line):
 
 ```
 GRANT SELECT, INSERT, UPDATE ON `asterisk`.`sip` TO `omni_webrtc`@`BACKEND_PRIVATE_IP`
+GRANT SELECT, INSERT, UPDATE ON `asterisk`.`certman_mapping` TO `omni_webrtc`@`BACKEND_PRIVATE_IP`
+GRANT SELECT ON `asterisk`.`certman_certs` TO `omni_webrtc`@`BACKEND_PRIVATE_IP`
 ```
+
+**2.3** Pick the certificate new extensions will use for DTLS. List what
+Certificate Manager has:
+
+```bash
+mysql asterisk -e "SELECT cid, basename, \`default\` FROM certman_certs"
+```
+
+Note the `basename` you want and put it in `FREEPBX_DTLS_CERT` (Part 4.3).
+If unset, the backend uses the row with `default = 1`. To match an extension
+that already works, check which cert it is bound to:
+
+```bash
+mysql asterisk -e "SELECT m.id, c.basename FROM certman_mapping m JOIN certman_certs c ON c.cid = m.cid WHERE m.id = 3022"
+```
+
+A self-signed certificate is fine for WebRTC DTLS — browsers verify the SDP
+fingerprint, not the CA chain. The backend refuses to create a user if the
+chosen certificate cannot be found.
 
 ---
 
@@ -187,10 +215,12 @@ node -e "require('mysql2/promise').createConnection({host:'PBX_PRIVATE_IP',user:
 FREEPBX_DB_HOST=PBX_PRIVATE_IP
 FREEPBX_DB_USER=omni_webrtc
 FREEPBX_DB_PASSWORD=PASTE_PASSWORD_HERE
+FREEPBX_DTLS_CERT=default
 ```
 
-`FREEPBX_DB_PORT` (default `3306`) and `FREEPBX_DB_NAME` (default `asterisk`)
-only need setting if yours differ.
+`FREEPBX_DTLS_CERT` is the certificate basename from Part 2.3. `FREEPBX_DB_PORT`
+(default `3306`) and `FREEPBX_DB_NAME` (default `asterisk`) only need setting
+if yours differ.
 
 **4.4** Restart the backend so it reads the new variables:
 
@@ -261,6 +291,21 @@ The backend refuses to write settings for an id without an `account` row.
 The GraphQL `addExtension` step reported success but no row exists — check the
 extension in the FreePBX UI and the GraphQL error log. Rare; usually a FreePBX
 API-module problem rather than a DB one.
+
+### `certificate "…" (FREEPBX_DTLS_CERT) not found` / `no default certificate`
+Part 2.3. The basename in `FREEPBX_DTLS_CERT` must match a row in
+`certman_certs` exactly (case-sensitive); if the variable is unset, one cert
+must have `default = 1`.
+
+### Extension shows AVPF/ICE/DTLS-SRTP correctly but "Enable DTLS" is No
+The `certman_mapping` row is missing — usually the grant on that table was
+not added (Part 2.1) so the second upsert failed. Check `pm2 logs` for
+`command denied`. Extensions created before the fix can be repaired in bulk
+(replace `default` with your `FREEPBX_DTLS_CERT` basename):
+
+```bash
+mysql asterisk -e "INSERT IGNORE INTO certman_mapping (id, cid, verify, setup, rekey, auto_generate_cert) SELECT s.id, c.cid, 'fingerprint', 'actpass', 0, 0 FROM sip s JOIN certman_certs c ON c.basename = 'default' LEFT JOIN certman_mapping m ON m.id = s.id WHERE s.keyword = 'media_encryption' AND s.data = 'dtls' AND m.id IS NULL" && fwconsole reload
+```
 
 ### `FREEPBX_DB_HOST / FREEPBX_DB_USER / FREEPBX_DB_PASSWORD are not set`
 Part 4.3/4.4. Deliberate: creation fails loudly rather than producing an

@@ -239,16 +239,27 @@ export async function createFreepbxExtension({ name, email }) {
 // the `asterisk.sip` table — the same table the admin UI reads — so writing
 // there keeps the UI accurate and survives reloads. Needs a DB user with
 // SELECT/INSERT/UPDATE on that one table; see docs/freepbx-webrtc-setup.md.
+// Exactly the keywords the FreePBX UI itself writes for a WebRTC extension
+// (verified against a UI-configured extension's `sip` rows on FreePBX 16.0.50).
 const WEBRTC_SIP_SETTINGS = {
   avpf: "yes", // Enable AVPF
   icesupport: "yes", // Enable ICE Support
   rtcp_mux: "yes", // Enable RTCP Mux
   media_encryption: "dtls", // Media Encryption = DTLS-SRTP
-  dtlsenable: "yes", // Enable DTLS
-  dtlsverify: "fingerprint", // required for DTLS to negotiate
-  dtlssetup: "actpass",
-  force_avp: "yes",
-  media_use_received_transport: "yes",
+  media_use_received_transport: "yes", // Media Use Received Transport
+};
+
+// The "DTLS" section on the extension page (Enable DTLS, Use Certificate,
+// DTLS Verify, DTLS Setup, DTLS Rekey Interval) belongs to the Certificate
+// Manager module, not Core. "Enable DTLS = Yes" simply means a row exists in
+// `certman_mapping` for the device; certman's config hook then emits
+// dtls_verify/dtls_setup/dtls_rekey (only when media_encryption=dtls) plus
+// dtls_cert_file/dtls_private_key from the referenced certificate.
+const WEBRTC_DTLS_OPTIONS = {
+  verify: "fingerprint", // DTLS Verify
+  setup: "actpass", // DTLS Setup = Act/Pass
+  rekey: 0, // DTLS Rekey Interval
+  auto_generate_cert: 0, // Auto Generate Certificate = No (use the default cert)
 };
 
 let freepbxDbPool = null;
@@ -296,6 +307,35 @@ async function enableWebrtcSettings(extensionId) {
   await pool.query(
     "INSERT INTO sip (id, keyword, data, flags) VALUES ? ON DUPLICATE KEY UPDATE data = VALUES(data)",
     [values],
+  );
+
+  // Enable DTLS: bind the device to a certificate in certman. Chosen by
+  // basename via FREEPBX_DTLS_CERT (as shown in Admin -> Certificate
+  // Management); falls back to whichever cert is flagged as the PBX default.
+  const certName = process.env.FREEPBX_DTLS_CERT;
+  const [certs] = certName
+    ? await pool.query(
+        "SELECT cid FROM certman_certs WHERE basename = ? LIMIT 1",
+        [certName],
+      )
+    : await pool.query(
+        "SELECT cid FROM certman_certs WHERE `default` = 1 LIMIT 1",
+      );
+  if (certs.length === 0) {
+    throw new Error(
+      certName
+        ? `certificate "${certName}" (FREEPBX_DTLS_CERT) not found in FreePBX Certificate Manager; cannot enable DTLS`
+        : "no default certificate in FreePBX Certificate Manager; set FREEPBX_DTLS_CERT or mark one as default",
+    );
+  }
+  const { verify, setup, rekey, auto_generate_cert } = WEBRTC_DTLS_OPTIONS;
+  await pool.query(
+    `INSERT INTO certman_mapping (id, cid, verify, setup, rekey, auto_generate_cert)
+     VALUES (?, ?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE
+       cid = VALUES(cid), verify = VALUES(verify), setup = VALUES(setup),
+       rekey = VALUES(rekey), auto_generate_cert = VALUES(auto_generate_cert)`,
+    [id, certs[0].cid, verify, setup, rekey, auto_generate_cert],
   );
 }
 
