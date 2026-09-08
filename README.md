@@ -14,6 +14,8 @@ This README would normally document whatever steps are necessary to get your app
 * `npm run dev` (nodemon) or `npm start`; in UAT it runs under PM2 as `Omni_Backend`.
 * FreePBX WebRTC provisioning needs a one-time MySQL user + firewall setup on
   the PBX host — see [docs/freepbx-webrtc-setup.md](docs/freepbx-webrtc-setup.md).
+* Call recording is decided per route/queue/extension — read
+  [docs/freepbx-call-recording-plan.md](docs/freepbx-call-recording-plan.md) before changing it.
 
 ### Contribution guidelines ###
 
