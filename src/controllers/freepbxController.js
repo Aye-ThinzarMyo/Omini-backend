@@ -173,20 +173,19 @@ export const getCallRecordingsList = async (req, res) => {
 };
 
 export const exportCallRecordings = async (req, res) => {
-  const {
-    limit,
-    uniqueid,
-    status,
-    direction,
-    duration_min,
-    duration_max,
-    startDate,
-    endDate,
-  } = req.query;
+  const q = req.query;
+  const uniqueid = q.uniqueid || q.callId;
+  const status = q.status || q.callStatus;
+  const direction = q.direction || q.callType;
+  const duration_min = q.duration_min || q.minDuration;
+  const duration_max = q.duration_max || q.maxDuration;
+  const startDate = q.startDate;
+  const endDate = q.endDate;
+  const limit = q.limit ? parseInt(q.limit) : undefined;
 
   try {
     const data = await getCallRecordings({
-      limit: limit ? parseInt(limit) : undefined,
+      limit,
       uniqueid,
       status,
       direction,
