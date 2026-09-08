@@ -8,6 +8,7 @@ import {
 import { getKeycloakUser } from "../services/keycloak";
 import { User } from "../database/models";
 import { decrypt } from "../utils/encryption";
+import { sendCsv } from "../utils/csv";
 
 const SIP_DOMAIN = process.env.FREEPBX_SIP_DOMAIN || "172.18.26.20";
 const SIP_WS_SERVERS =
@@ -157,6 +158,80 @@ export const getCallRecordingsList = async (req, res) => {
     );
     res.status(502).json({
       error: "Failed to fetch recordings from FreePBX",
+      detail: err.response?.data || err.message,
+    });
+  }
+};
+
+export const exportCallRecordings = async (req, res) => {
+  const {
+    limit,
+    uniqueid,
+    status,
+    direction,
+    duration_min,
+    duration_max,
+    startDate,
+    endDate,
+  } = req.query;
+
+  try {
+    const data = await getCallRecordings({
+      limit: limit ? parseInt(limit) : undefined,
+      uniqueid,
+      status,
+      direction,
+      duration_min,
+      duration_max,
+      startDate,
+      endDate,
+    });
+
+    const rows = [
+      [
+        "ID",
+        "Unique ID",
+        "Call Date",
+        "CLID",
+        "Caller Number",
+        "Source",
+        "Destination",
+        "Context",
+        "Channel",
+        "Duration (s)",
+        "Billable Seconds",
+        "Disposition",
+        "Recording File",
+        "DID",
+      ],
+      ...data.map((c) => [
+        c.id,
+        c.uniqueid,
+        c.calldate,
+        c.clid,
+        c.cnum,
+        c.src,
+        c.dst,
+        c.dcontext,
+        c.channel,
+        c.duration,
+        c.billsec,
+        c.disposition,
+        c.recordingfile,
+        c.did,
+      ]),
+    ];
+
+    const dateRange =
+      startDate && endDate ? `${startDate}-to-${endDate}` : "all";
+    sendCsv(res, rows, `call-recordings-${dateRange}.csv`);
+  } catch (err) {
+    console.error(
+      "FreePBX recordings export error:",
+      err.response?.data || err.message,
+    );
+    res.status(502).json({
+      error: "Failed to export recordings from FreePBX",
       detail: err.response?.data || err.message,
     });
   }

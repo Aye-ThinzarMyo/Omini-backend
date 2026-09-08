@@ -4,6 +4,7 @@ import {
   getCallChart,
   exportCallChart,
   getCallRecordingsList,
+  exportCallRecordings,
   getRecordingFile,
   getRingGroupsList,
   getSipConfig,
@@ -22,6 +23,14 @@ router.get(
   exportCallChart,
 );
 router.get("/calls/recordings", getCallRecordingsList);
+router.get(
+  "/calls/recordings/export",
+  logAction({
+    action: "export",
+    targetType: "call_recording",
+  }),
+  exportCallRecordings,
+);
 router.get("/recordings/file", getRecordingFile);
 router.get("/ring-groups", getRingGroupsList);
 
