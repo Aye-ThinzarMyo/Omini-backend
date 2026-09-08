@@ -74,6 +74,7 @@
 import axios from "axios";
 import crypto from "crypto";
 import qs from "qs";
+import mysql from "mysql2/promise";
 const FREEPBX_GQL_URL = process.env.FREEPBX_GQL_URL;
 const FREEPBX_TOKEN_URL = process.env.FREEPBX_TOKEN_URL;
 const CLIENT_ID = process.env.FREEPBX_CLIENT_ID;
@@ -182,7 +183,7 @@ export async function createFreepbxExtension({ name, email }) {
     email,
     umEnable: false,
     vmEnable: false,
-    maxContacts: "1",
+    maxContacts: "5",
   };
 
   const createResult = await gqlRequest(createMutation, {
@@ -218,9 +219,124 @@ export async function createFreepbxExtension({ name, email }) {
     );
   }
 
+  // The Core GraphQL schema has no WebRTC inputs (AVPF/ICE/DTLS...), so those
+  // are written straight into FreePBX's `sip` table over MySQL; the doreload
+  // below regenerates pjsip.endpoint.conf from that table.
+  try {
+    await enableWebrtcSettings(extensionId);
+  } catch (err) {
+    await deleteFreepbxExtension(extensionId).catch(() => {});
+    throw new Error(`enableWebrtcSettings failed: ${err.message}`);
+  }
+
   await gqlRequest(`mutation { doreload(input: {}) { status message } }`);
 
   return { extensionId, extPassword };
+}
+
+// 5b. Apply WebRTC endpoint settings (AVPF, ICE, RTCP mux, DTLS-SRTP, DTLS).
+// FreePBX stores per-extension pjsip settings as (id, keyword, data) rows in
+// the `asterisk.sip` table — the same table the admin UI reads — so writing
+// there keeps the UI accurate and survives reloads. Needs a DB user with
+// SELECT/INSERT/UPDATE on that one table; see docs/freepbx-webrtc-setup.md.
+// Exactly the keywords the FreePBX UI itself writes for a WebRTC extension
+// (verified against a UI-configured extension's `sip` rows on FreePBX 16.0.50).
+const WEBRTC_SIP_SETTINGS = {
+  avpf: "yes", // Enable AVPF
+  icesupport: "yes", // Enable ICE Support
+  rtcp_mux: "yes", // Enable RTCP Mux
+  media_encryption: "dtls", // Media Encryption = DTLS-SRTP
+  media_use_received_transport: "yes", // Media Use Received Transport
+};
+
+// The "DTLS" section on the extension page (Enable DTLS, Use Certificate,
+// DTLS Verify, DTLS Setup, DTLS Rekey Interval) belongs to the Certificate
+// Manager module, not Core. "Enable DTLS = Yes" simply means a row exists in
+// `certman_mapping` for the device; certman's config hook then emits
+// dtls_verify/dtls_setup/dtls_rekey (only when media_encryption=dtls) plus
+// dtls_cert_file/dtls_private_key from the referenced certificate.
+const WEBRTC_DTLS_OPTIONS = {
+  verify: "fingerprint", // DTLS Verify
+  setup: "actpass", // DTLS Setup = Act/Pass
+  rekey: 0, // DTLS Rekey Interval
+  auto_generate_cert: 0, // Auto Generate Certificate = No (use the default cert)
+};
+
+let freepbxDbPool = null;
+function getFreepbxDbPool() {
+  if (freepbxDbPool) return freepbxDbPool;
+  const { FREEPBX_DB_HOST, FREEPBX_DB_USER, FREEPBX_DB_PASSWORD } = process.env;
+  if (!FREEPBX_DB_HOST || !FREEPBX_DB_USER || !FREEPBX_DB_PASSWORD) {
+    throw new Error(
+      "FREEPBX_DB_HOST / FREEPBX_DB_USER / FREEPBX_DB_PASSWORD are not set; cannot apply WebRTC settings to the extension",
+    );
+  }
+  freepbxDbPool = mysql.createPool({
+    host: FREEPBX_DB_HOST,
+    port: parseInt(process.env.FREEPBX_DB_PORT || "3306", 10),
+    user: FREEPBX_DB_USER,
+    password: FREEPBX_DB_PASSWORD,
+    database: process.env.FREEPBX_DB_NAME || "asterisk",
+    connectionLimit: 3,
+    connectTimeout: 10_000,
+  });
+  return freepbxDbPool;
+}
+
+async function enableWebrtcSettings(extensionId) {
+  const id = String(extensionId);
+  const pool = getFreepbxDbPool();
+
+  // Refuse to write for an id that has no extension row, so a failed create
+  // can never leave orphan settings behind.
+  const [rows] = await pool.query(
+    "SELECT 1 FROM sip WHERE id = ? AND keyword = 'account' LIMIT 1",
+    [id],
+  );
+  if (rows.length === 0) {
+    throw new Error(`extension ${id} not found in FreePBX sip table`);
+  }
+
+  // Idempotent: re-running for the same extension just re-asserts the values.
+  const values = Object.entries(WEBRTC_SIP_SETTINGS).map(([keyword, data]) => [
+    id,
+    keyword,
+    data,
+    0,
+  ]);
+  await pool.query(
+    "INSERT INTO sip (id, keyword, data, flags) VALUES ? ON DUPLICATE KEY UPDATE data = VALUES(data)",
+    [values],
+  );
+
+  // Enable DTLS: bind the device to a certificate in certman. Chosen by
+  // basename via FREEPBX_DTLS_CERT (as shown in Admin -> Certificate
+  // Management); falls back to whichever cert is flagged as the PBX default.
+  const certName = process.env.FREEPBX_DTLS_CERT;
+  const [certs] = certName
+    ? await pool.query(
+        "SELECT cid FROM certman_certs WHERE basename = ? LIMIT 1",
+        [certName],
+      )
+    : await pool.query(
+        "SELECT cid FROM certman_certs WHERE `default` = 1 LIMIT 1",
+      );
+  if (certs.length === 0) {
+    throw new Error(
+      certName
+        ? `certificate "${certName}" (FREEPBX_DTLS_CERT) not found in FreePBX Certificate Manager; cannot enable DTLS`
+        : "no default certificate in FreePBX Certificate Manager; set FREEPBX_DTLS_CERT or mark one as default",
+    );
+  }
+  const { verify, setup, rekey, auto_generate_cert } = WEBRTC_DTLS_OPTIONS;
+  await pool.query(
+    `INSERT INTO certman_mapping (id, cid, verify, setup, rekey, auto_generate_cert)
+     VALUES (?, ?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE
+       cid = VALUES(cid), verify = VALUES(verify), setup = VALUES(setup),
+       rekey = VALUES(rekey), auto_generate_cert = VALUES(auto_generate_cert)`,
+    [id, certs[0].cid, verify, setup, rekey, auto_generate_cert],
+  );
 }
 
 // 6. Rollback helper

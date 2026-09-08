@@ -205,6 +205,11 @@ export const createUser = async (req, res) => {
         email,
       });
     } catch (err) {
+      console.error(
+        "FreePBX createExtension failed:",
+        err.response?.data || err.message,
+        err.stack,
+      );
       await t.rollback();
       // Best-effort cleanup of what we already created upstream
       await deleteKeycloakUser(keycloakId).catch(() => {});
