@@ -189,8 +189,7 @@ export const exportCallRecordings = async (req, res) => {
 
     const rows = [
       [
-        "ID",
-        "Unique ID",
+        "Call ID",
         "Call Date",
         "CLID",
         "Caller Number",
@@ -205,7 +204,6 @@ export const exportCallRecordings = async (req, res) => {
         "DID",
       ],
       ...data.map((c) => [
-        c.id,
         c.uniqueid,
         c.calldate,
         c.clid,
