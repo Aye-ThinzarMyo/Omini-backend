@@ -464,6 +464,7 @@ export async function getCallRecordings({
   uniqueid,
   status,
   direction,
+  duration,
   duration_min,
   duration_max,
   startDate,
@@ -510,6 +511,11 @@ export async function getCallRecordings({
         }
       });
     });
+  }
+
+  if (duration) {
+    const d = parseInt(duration);
+    cdrs = cdrs.filter((c) => parseInt(c.duration) === d);
   }
 
   if (duration_min) {

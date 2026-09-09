@@ -177,8 +177,7 @@ export const exportCallRecordings = async (req, res) => {
   const uniqueid = q.uniqueid || q.callId;
   const status = q.status || q.callStatus;
   const direction = q.direction || q.callType;
-  const duration_min = q.duration_min || q.minDuration;
-  const duration_max = q.duration_max || q.maxDuration;
+  const duration = q.duration || q.callDuration;
   const startDate = q.startDate;
   const endDate = q.endDate;
   const limit = q.limit ? parseInt(q.limit) : undefined;
@@ -189,8 +188,7 @@ export const exportCallRecordings = async (req, res) => {
       uniqueid,
       status,
       direction,
-      duration_min,
-      duration_max,
+      duration,
       startDate,
       endDate,
     });
